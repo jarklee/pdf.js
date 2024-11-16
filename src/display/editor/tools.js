@@ -20,7 +20,9 @@
 import {
   AnnotationEditorParamsType,
   AnnotationEditorPrefix,
+  annotationEditorTextSelectable,
   AnnotationEditorType,
+  AnnotationEditorTypeNames,
   FeatureTest,
   getUuid,
   shadow,
@@ -1065,7 +1067,10 @@ class AnnotationEditorUIManager {
     return null;
   }
 
-  highlightSelection(methodOfCreation = "") {
+  #highlightSelection(
+    methodOfCreation = "",
+    expectMode = AnnotationEditorType.HIGHLIGHT
+  ) {
     const selection = document.getSelection();
     if (!selection || selection.isCollapsed) {
       return;
@@ -1081,9 +1086,10 @@ class AnnotationEditorUIManager {
     selection.empty();
 
     const layer = this.#getLayerForTextLayer(textLayer);
-    const isNoneMode = this.#mode === AnnotationEditorType.NONE;
-    const callback = () => {
-      layer?.createAndAddNewEditor({ x: 0, y: 0 }, false, {
+    layer?.createAndAddNewEditor(
+      { x: 0, y: 0 },
+      false,
+      {
         methodOfCreation,
         boxes,
         anchorNode,
@@ -1091,16 +1097,25 @@ class AnnotationEditorUIManager {
         focusNode,
         focusOffset,
         text,
-      });
-      if (isNoneMode) {
-        this.showAllEditors("highlight", true, /* updateButton = */ true);
-      }
-    };
-    if (isNoneMode) {
-      this.switchToMode(AnnotationEditorType.HIGHLIGHT, callback);
-      return;
+      },
+      expectMode
+    );
+    if (this.#mode !== expectMode) {
+      this.switchToMode(expectMode);
+      this.showAllEditors(
+        AnnotationEditorTypeNames[expectMode],
+        true,
+        /* updateButton = */ true
+      );
     }
-    callback();
+  }
+
+  highlightSelection(methodOfCreation = "") {
+    this.#highlightSelection(methodOfCreation, AnnotationEditorType.HIGHLIGHT);
+  }
+
+  highlightSelectionByCustomAnnotation(methodOfCreation = "") {
+    this.#highlightSelection(methodOfCreation, AnnotationEditorType.CUSTOM);
   }
 
   #displayHighlightToolbar() {
@@ -1168,23 +1183,22 @@ class AnnotationEditorUIManager {
       hasSelectedText: true,
     });
 
-    if (
-      this.#mode !== AnnotationEditorType.HIGHLIGHT &&
-      this.#mode !== AnnotationEditorType.NONE
-    ) {
+    const isTextSelectable = annotationEditorTextSelectable(this.#mode);
+
+    if (!isTextSelectable && this.#mode !== AnnotationEditorType.NONE) {
       return;
     }
 
-    if (this.#mode === AnnotationEditorType.HIGHLIGHT) {
-      this.showAllEditors("highlight", true, /* updateButton = */ true);
+    const editorName = AnnotationEditorTypeNames[this.#mode];
+    if (editorName) {
+      this.showAllEditors(editorName, true, /* updateButton = */ true);
     }
 
     this.#highlightWhenShiftUp = this.isShiftKeyDown;
     if (!this.isShiftKeyDown) {
-      const activeLayer =
-        this.#mode === AnnotationEditorType.HIGHLIGHT
-          ? this.#getLayerForTextLayer(textLayer)
-          : null;
+      const activeLayer = isTextSelectable
+        ? this.#getLayerForTextLayer(textLayer)
+        : null;
       activeLayer?.toggleDrawing();
 
       const ac = new AbortController();
@@ -1210,7 +1224,7 @@ class AnnotationEditorUIManager {
     if (this.#mode === AnnotationEditorType.HIGHLIGHT) {
       this.highlightSelection(methodOfCreation);
     } else if (this.#mode === AnnotationEditorType.CUSTOM) {
-      // TODO: - emit custom highlight event to outside
+      this.highlightSelectionByCustomAnnotation(methodOfCreation);
     } else if (this.#enableHighlightFloatingButton) {
       this.#displayHighlightToolbar();
     }
@@ -1727,7 +1741,12 @@ class AnnotationEditorUIManager {
           },
         });
         (this.#showAllStates ||= new Map()).set(type, value);
-        this.showAllEditors("highlight", value);
+        for (const mode of [
+          AnnotationEditorType.CUSTOM,
+          AnnotationEditorType.HIGHLIGHT,
+        ]) {
+          this.showAllEditors(AnnotationEditorTypeNames[mode], value);
+        }
         break;
     }
 

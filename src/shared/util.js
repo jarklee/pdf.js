@@ -95,7 +95,23 @@ const AnnotationEditorParamsType = {
   HIGHLIGHT_THICKNESS: 33,
   HIGHLIGHT_FREE: 34,
   HIGHLIGHT_SHOW_ALL: 35,
+  CUSTOM_COLOR: 99,
 };
+
+const AnnotationEditorTypeNames = {
+  [AnnotationEditorType.CUSTOM]: "custom",
+  [AnnotationEditorType.HIGHLIGHT]: "highlight",
+};
+
+function annotationEditorTextSelectable(mode) {
+  switch (mode) {
+    case AnnotationEditorType.HIGHLIGHT:
+    case AnnotationEditorType.CUSTOM:
+      return true;
+    default:
+      return false;
+  }
+}
 
 // Permission flags from Table 22, Section 7.6.3.2 of the PDF specification.
 const PermissionFlag = {
@@ -1138,7 +1154,9 @@ export {
   AnnotationBorderStyleType,
   AnnotationEditorParamsType,
   AnnotationEditorPrefix,
+  annotationEditorTextSelectable,
   AnnotationEditorType,
+  AnnotationEditorTypeNames,
   AnnotationFieldFlag,
   AnnotationFlag,
   AnnotationMode,

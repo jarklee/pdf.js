@@ -15,10 +15,29 @@
 
 import { noContextMenu } from "../display_utils.js";
 
+class CustomEditorButtonToolbar {
+  /**
+   *  {EditorToolbar} parent
+   */
+  parent = null;
+
+  renderButton() {
+    return null;
+  }
+
+  destroy() {}
+
+  notifyShown() {}
+
+  notifyHide() {}
+}
+
 class EditorToolbar {
   #toolbar = null;
 
   #colorPicker = null;
+
+  #customEditorToolbar = null;
 
   #editor;
 
@@ -34,6 +53,7 @@ class EditorToolbar {
     EditorToolbar.#l10nRemove ||= Object.freeze({
       freetext: "pdfjs-editor-remove-freetext-button",
       highlight: "pdfjs-editor-remove-highlight-button",
+      custom: "pdfjs-editor-remove-highlight-button",
       ink: "pdfjs-editor-remove-ink-button",
       stamp: "pdfjs-editor-remove-stamp-button",
     });
@@ -110,11 +130,19 @@ class EditorToolbar {
   hide() {
     this.#toolbar.classList.add("hidden");
     this.#colorPicker?.hideDropdown();
+
+    if (this.#customEditorToolbar) {
+      this.#customEditorToolbar.notifyHide();
+    }
   }
 
   show() {
     this.#toolbar.classList.remove("hidden");
     this.#altText?.shown();
+
+    if (this.#customEditorToolbar) {
+      this.#customEditorToolbar.notifyShown();
+    }
   }
 
   #addDeleteButton() {
@@ -155,10 +183,25 @@ class EditorToolbar {
     this.#buttons.prepend(button, this.#divider);
   }
 
+  /**
+   * @param {CustomEditorButtonToolbar} toolbar
+   */
+  addCustomEditorToolbar(toolbar) {
+    this.#customEditorToolbar = toolbar;
+    toolbar.parent = this;
+    const button = toolbar.renderButton();
+    if (button) {
+      this.#addListenersToElement(button);
+      this.#buttons.prepend(button, this.#divider);
+    }
+  }
+
   remove() {
     this.#toolbar.remove();
     this.#colorPicker?.destroy();
     this.#colorPicker = null;
+    this.#customEditorToolbar?.destroy();
+    this.#customEditorToolbar = null;
   }
 }
 
@@ -249,4 +292,4 @@ class HighlightToolbar {
   }
 }
 
-export { EditorToolbar, HighlightToolbar };
+export { CustomEditorButtonToolbar, EditorToolbar, HighlightToolbar };

@@ -21,7 +21,7 @@ import {
 import { AnnotationCustomElement } from "../annotation_layer.js";
 import { AnnotationEditor } from "./editor.js";
 import { bindEvents } from "./tools.js";
-import { ColorPicker } from "./color_picker.js";
+import { CustomEditorButtonToolbar } from "./toolbar.js";
 import { HighlightOutliner } from "./drawers/highlight.js";
 
 /**
@@ -35,8 +35,6 @@ class AnnotationCustomEditor extends AnnotationEditor {
   #boxes;
 
   #clipPathId = null;
-
-  #colorPicker = null;
 
   #focusOutlines = null;
 
@@ -71,7 +69,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
   static _editorType = AnnotationEditorType.CUSTOM;
 
   constructor(params) {
-    super({ ...params, name: "AnnotationCustomEditor" });
+    super({ ...params, name: "annotationCustomEditor" });
     this.color = params.color || AnnotationCustomEditor._defaultColor;
     this.#opacity = params.opacity || AnnotationCustomEditor._defaultOpacity;
     this.#boxes = params.boxes || null;
@@ -145,21 +143,8 @@ class AnnotationCustomEditor extends AnnotationEditor {
   /** @inheritdoc */
   static initialize(l10n, uiManager) {
     AnnotationEditor.initialize(l10n, uiManager);
-    AnnotationCustomEditor._defaultColor ||=
-      uiManager.highlightColors?.values().next().value || "#fff066";
+    AnnotationCustomEditor._defaultColor = "#fff066";
   }
-
-  /** @inheritdoc */
-  static updateDefaultParams(type, value) {
-    switch (type) {
-      case AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR:
-        AnnotationCustomEditor._defaultColor = value;
-        break;
-    }
-  }
-
-  /** @inheritdoc */
-  translateInPage(x, y) {}
 
   /** @inheritdoc */
   get toolbarPosition() {
@@ -169,26 +154,21 @@ class AnnotationCustomEditor extends AnnotationEditor {
   /** @inheritdoc */
   updateParams(type, value) {
     switch (type) {
-      case AnnotationEditorParamsType.HIGHLIGHT_COLOR:
+      case AnnotationEditorParamsType.CUSTOM_COLOR:
         this.#updateColor(value);
         break;
     }
   }
 
   static get defaultPropertiesToUpdate() {
-    return [
-      [
-        AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR,
-        AnnotationCustomEditor._defaultColor,
-      ],
-    ];
+    return [];
   }
 
   /** @inheritdoc */
   get propertiesToUpdate() {
     return [
       [
-        AnnotationEditorParamsType.HIGHLIGHT_COLOR,
+        AnnotationEditorParamsType.CUSTOM_COLOR,
         this.color || AnnotationCustomEditor._defaultColor,
       ],
     ];
@@ -202,7 +182,6 @@ class AnnotationCustomEditor extends AnnotationEditor {
     const setColorAndOpacity = (col, opa) => {
       this.color = col;
       this.parent?.drawLayer.changeColor(this.#id, col);
-      this.#colorPicker?.updateColor(col);
       this.#opacity = opa;
       this.parent?.drawLayer.changeOpacity(this.#id, opa);
     };
@@ -217,7 +196,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
       undo: setColorAndOpacity.bind(this, savedColor, savedOpacity),
       post: this._uiManager.updateUI.bind(this._uiManager, this),
       mustExec: true,
-      type: AnnotationEditorParamsType.HIGHLIGHT_COLOR,
+      type: AnnotationEditorParamsType.CUSTOM_COLOR,
       overwriteIfSameType: true,
       keepUndo: true,
     });
@@ -237,10 +216,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
     if (!toolbar) {
       return null;
     }
-    if (this._uiManager.highlightColors) {
-      this.#colorPicker = new ColorPicker({ editor: this });
-      toolbar.addColorPicker(this.#colorPicker);
-    }
+    toolbar.addCustomEditorToolbar(new AnnotationCustomEditToolbar(this));
     return toolbar;
   }
 
@@ -283,6 +259,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
 
   /** @inheritdoc */
   remove() {
+    // TODO: - notify remove for external
     this.#cleanDrawLayer();
     this._reportTelemetry({
       action: "deleted",
@@ -612,6 +589,22 @@ class AnnotationCustomEditor extends AnnotationEditor {
   static canCreateNewEmptyEditor() {
     return false;
   }
+}
+
+class AnnotationCustomCreateToolbar { }
+
+class AnnotationCustomEditToolbar extends CustomEditorButtonToolbar {
+  /**
+   * @param {AnnotationCustomEditor} editor
+   */
+  constructor(editor) {
+    super();
+    this.editor = editor;
+  }
+
+  render() { }
+
+  destroy() { }
 }
 
 export { AnnotationCustomEditor };

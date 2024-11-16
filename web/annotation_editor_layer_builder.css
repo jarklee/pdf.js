@@ -218,7 +218,7 @@
 }
 
 .annotationEditorLayer
-  :is(.freeTextEditor, .inkEditor, .stampEditor, .highlightEditor),
+  :is(.freeTextEditor, .inkEditor, .stampEditor, .highlightEditor, .annotationCustomEditor),
 .textLayer {
   .editToolbar {
     --editor-toolbar-delete-image: url(images/editor-toolbar-delete.svg);
@@ -1084,30 +1084,30 @@
 
 .annotationEditorLayer {
   &[data-main-rotation="0"] {
-    .highlightEditor:not(.free) > .editToolbar {
+    .highlightEditor:not(.free),.annotationCustomEditor > .editToolbar {
       rotate: 0deg;
     }
   }
 
   &[data-main-rotation="90"] {
-    .highlightEditor:not(.free) > .editToolbar {
+    .highlightEditor:not(.free),.annotationCustomEditor > .editToolbar {
       rotate: 270deg;
     }
   }
 
   &[data-main-rotation="180"] {
-    .highlightEditor:not(.free) > .editToolbar {
+    .highlightEditor:not(.free),.annotationCustomEditor > .editToolbar {
       rotate: 180deg;
     }
   }
 
   &[data-main-rotation="270"] {
-    .highlightEditor:not(.free) > .editToolbar {
+    .highlightEditor:not(.free),.annotationCustomEditor > .editToolbar {
       rotate: 90deg;
     }
   }
 
-  .highlightEditor {
+  .highlightEditor, .annotationCustomEditor {
     position: absolute;
     background: transparent;
     z-index: 1;

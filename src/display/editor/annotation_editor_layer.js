@@ -25,7 +25,11 @@
 // eslint-disable-next-line max-len
 /** @typedef {import("../src/display/struct_tree_layer_builder.js").StructTreeLayerBuilder} StructTreeLayerBuilder */
 
-import { AnnotationEditorType, FeatureTest } from "../../shared/util.js";
+import {
+  annotationEditorTextSelectable,
+  AnnotationEditorType,
+  FeatureTest,
+} from "../../shared/util.js";
 import { AnnotationCustomEditor } from "./custom.js";
 import { AnnotationEditor } from "./editor.js";
 import { FreeTextEditor } from "./freetext.js";
@@ -86,10 +90,13 @@ class AnnotationEditorLayer {
   static _initialized = false;
 
   static #editorTypes = new Map(
-    [FreeTextEditor, InkEditor, StampEditor, HighlightEditor].map(type => [
-      type._editorType,
-      type,
-    ])
+    [
+      FreeTextEditor,
+      InkEditor,
+      StampEditor,
+      HighlightEditor,
+      AnnotationCustomEditor,
+    ].map(type => [type._editorType, type])
   );
 
   /**
@@ -168,16 +175,16 @@ class AnnotationEditorLayer {
         this.togglePointerEvents(true);
         this.disableClick();
         break;
-      case AnnotationEditorType.HIGHLIGHT:
-      case AnnotationEditorType.CUSTOM:
-        this.enableTextSelection();
-        this.togglePointerEvents(false);
-        this.disableClick();
-        break;
       default:
-        this.disableTextSelection();
-        this.togglePointerEvents(true);
-        this.enableClick();
+        if (annotationEditorTextSelectable(mode)) {
+          this.enableTextSelection();
+          this.togglePointerEvents(false);
+          this.disableClick();
+        } else {
+          this.disableTextSelection();
+          this.togglePointerEvents(true);
+          this.enableClick();
+        }
     }
 
     this.toggleAnnotationLayerPointerEvents(false);
@@ -687,12 +694,15 @@ class AnnotationEditorLayer {
    * @param [Object] data
    * @returns {AnnotationEditor}
    */
-  createAndAddNewEditor(event, isCentered, data = {}) {
+  createAndAddNewEditor(event, isCentered, data = {}, mode = null) {
     const id = this.getNextId();
-    let mode = this.#uiManager.getMode();
-    if (mode === AnnotationEditorType.CUSTOM) {
-      // custom annotation can only create by external API
-      mode = AnnotationEditorType.HIGHLIGHT;
+    if (!mode) {
+      // no force mode, skip to mode
+      mode = this.#uiManager.getMode();
+      if (mode === AnnotationEditorType.CUSTOM) {
+        // custom annotation can only create by external API
+        mode = AnnotationEditorType.HIGHLIGHT;
+      }
     }
     const editor = this.#createNewEditor(
       {
@@ -803,10 +813,7 @@ class AnnotationEditorLayer {
    */
   pointerdown(event) {
     const mode = this.#uiManager.getMode();
-    if (
-      mode === AnnotationEditorType.HIGHLIGHT ||
-      mode === AnnotationEditorType.CUSTOM
-    ) {
+    if (annotationEditorTextSelectable(mode)) {
       this.enableTextSelection();
     }
     if (this.#hadPointerDown) {
