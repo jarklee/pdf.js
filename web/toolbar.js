@@ -78,6 +78,18 @@ class Toolbar {
         },
       },
       {
+        element: options.editorCustomButton,
+        eventName: "switchannotationeditormode",
+        eventDetails: {
+          get mode() {
+            const { classList } = options.editorCustomButton;
+            return classList.contains("toggled")
+              ? AnnotationEditorType.NONE
+              : AnnotationEditorType.CUSTOM;
+          },
+        },
+      },
+      {
         element: options.editorHighlightButton,
         eventName: "switchannotationeditormode",
         eventDetails: {
@@ -275,6 +287,7 @@ class Toolbar {
       editorFreeTextParamsToolbar,
       editorHighlightButton,
       editorHighlightParamsToolbar,
+      editorCustomButton,
       editorInkButton,
       editorInkParamsToolbar,
       editorStampButton,
@@ -291,6 +304,7 @@ class Toolbar {
       mode === AnnotationEditorType.HIGHLIGHT,
       editorHighlightParamsToolbar
     );
+    toggleExpandedBtn(editorCustomButton, mode === AnnotationEditorType.CUSTOM);
     toggleExpandedBtn(
       editorInkButton,
       mode === AnnotationEditorType.INK,
@@ -305,6 +319,7 @@ class Toolbar {
     const isDisable = mode === AnnotationEditorType.DISABLE;
     editorFreeTextButton.disabled = isDisable;
     editorHighlightButton.disabled = isDisable;
+    editorCustomButton.disabled = isDisable;
     editorInkButton.disabled = isDisable;
     editorStampButton.disabled = isDisable;
   }

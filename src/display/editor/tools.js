@@ -623,6 +623,8 @@ class AnnotationEditorUIManager {
 
   #highlightToolbar = null;
 
+  #commentToolbar = null;
+
   #idManager = new IdManager();
 
   #isEnabled = false;
@@ -812,6 +814,7 @@ class AnnotationEditorUIManager {
     pageColors,
     highlightColors,
     enableHighlightFloatingButton,
+    enableCommentFloatingButton,
     enableUpdatedAddImage,
     enableNewAltTextWhenAddingImage,
     mlManager
@@ -881,6 +884,8 @@ class AnnotationEditorUIManager {
     this.#altTextManager?.destroy();
     this.#highlightToolbar?.hide();
     this.#highlightToolbar = null;
+    this.#commentToolbar?.hide();
+    this.#commentToolbar = null;
     if (this.#focusMainContainerTimeoutId) {
       clearTimeout(this.#focusMainContainerTimeoutId);
       this.#focusMainContainerTimeoutId = null;
@@ -1204,6 +1209,8 @@ class AnnotationEditorUIManager {
   #onSelectEnd(methodOfCreation = "") {
     if (this.#mode === AnnotationEditorType.HIGHLIGHT) {
       this.highlightSelection(methodOfCreation);
+    } else if (this.#mode === AnnotationEditorType.CUSTOM) {
+      // TODO: - emit custom highlight event to outside
     } else if (this.#enableHighlightFloatingButton) {
       this.#displayHighlightToolbar();
     }

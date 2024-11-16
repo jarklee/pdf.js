@@ -135,6 +135,9 @@ class AnnotationElementFactory {
       case AnnotationType.HIGHLIGHT:
         return new HighlightAnnotationElement(parameters);
 
+      case AnnotationType.CUSTOM:
+        return new AnnotationCustomElement(parameters);
+
       case AnnotationType.UNDERLINE:
         return new UnderlineAnnotationElement(parameters);
 
@@ -2890,6 +2893,28 @@ class HighlightAnnotationElement extends AnnotationElement {
   }
 }
 
+class AnnotationCustomElement extends AnnotationElement {
+  constructor(parameters) {
+    super(parameters, {
+      isRenderable: true,
+      ignoreBorder: true,
+      createQuadrilaterals: true,
+    });
+    this.annotationEditorType = AnnotationEditorType.CUSTOM;
+  }
+
+  render() {
+    if (!this.data.popupRef && this.hasPopupData) {
+      this._createPopup();
+    }
+
+    this.container.classList.add("customAnnotation");
+    this._editOnDoubleClick();
+
+    return this.container;
+  }
+}
+
 class UnderlineAnnotationElement extends AnnotationElement {
   constructor(parameters) {
     super(parameters, {
@@ -3263,6 +3288,7 @@ class AnnotationLayer {
 }
 
 export {
+  AnnotationCustomElement,
   AnnotationLayer,
   FreeTextAnnotationElement,
   HighlightAnnotationElement,

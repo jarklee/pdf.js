@@ -55,6 +55,7 @@ function getViewerConfiguration() {
       editorFreeTextParamsToolbar: document.getElementById(
         "editorFreeTextParamsToolbar"
       ),
+      editorCustomButton: document.getElementById("editorCustomButton"),
       editorHighlightButton: document.getElementById("editorHighlightButton"),
       editorHighlightParamsToolbar: document.getElementById(
         "editorHighlightParamsToolbar"

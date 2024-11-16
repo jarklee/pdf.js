@@ -26,6 +26,7 @@
 /** @typedef {import("../src/display/struct_tree_layer_builder.js").StructTreeLayerBuilder} StructTreeLayerBuilder */
 
 import { AnnotationEditorType, FeatureTest } from "../../shared/util.js";
+import { AnnotationCustomEditor } from "./custom.js";
 import { AnnotationEditor } from "./editor.js";
 import { FreeTextEditor } from "./freetext.js";
 import { HighlightEditor } from "./highlight.js";
@@ -168,6 +169,7 @@ class AnnotationEditorLayer {
         this.disableClick();
         break;
       case AnnotationEditorType.HIGHLIGHT:
+      case AnnotationEditorType.CUSTOM:
         this.enableTextSelection();
         this.togglePointerEvents(false);
         this.disableClick();
@@ -611,7 +613,11 @@ class AnnotationEditorLayer {
   }
 
   get #currentEditorType() {
-    return AnnotationEditorLayer.#editorTypes.get(this.#uiManager.getMode());
+    return this.editorTypeByMode(this.#uiManager.getMode());
+  }
+
+  editorTypeByMode(mode) {
+    return AnnotationEditorLayer.#editorTypes.get(mode);
   }
 
   combinedSignal(ac) {
@@ -621,10 +627,11 @@ class AnnotationEditorLayer {
   /**
    * Create a new editor
    * @param {Object} params
+   * @param {Object} forceEditorType
    * @returns {AnnotationEditor}
    */
-  #createNewEditor(params) {
-    const editorType = this.#currentEditorType;
+  #createNewEditor(params, forceEditorType = null) {
+    const editorType = forceEditorType ?? this.#currentEditorType;
     return editorType ? new editorType.prototype.constructor(params) : null;
   }
 
@@ -643,15 +650,18 @@ class AnnotationEditorLayer {
 
     const { offsetX, offsetY } = this.#getCenterPoint();
     const id = this.getNextId();
-    const editor = this.#createNewEditor({
-      parent: this,
-      id,
-      x: offsetX,
-      y: offsetY,
-      uiManager: this.#uiManager,
-      isCentered: true,
-      ...params,
-    });
+    const editor = this.#createNewEditor(
+      {
+        parent: this,
+        id,
+        x: offsetX,
+        y: offsetY,
+        uiManager: this.#uiManager,
+        isCentered: true,
+        ...params,
+      },
+      this.editorTypeByMode(mode)
+    );
     if (editor) {
       this.add(editor);
     }
@@ -679,15 +689,23 @@ class AnnotationEditorLayer {
    */
   createAndAddNewEditor(event, isCentered, data = {}) {
     const id = this.getNextId();
-    const editor = this.#createNewEditor({
-      parent: this,
-      id,
-      x: event.offsetX,
-      y: event.offsetY,
-      uiManager: this.#uiManager,
-      isCentered,
-      ...data,
-    });
+    let mode = this.#uiManager.getMode();
+    if (mode === AnnotationEditorType.CUSTOM) {
+      // custom annotation can only create by external API
+      mode = AnnotationEditorType.HIGHLIGHT;
+    }
+    const editor = this.#createNewEditor(
+      {
+        parent: this,
+        id,
+        x: event.offsetX,
+        y: event.offsetY,
+        uiManager: this.#uiManager,
+        isCentered,
+        ...data,
+      },
+      this.editorTypeByMode(mode)
+    );
     if (editor) {
       this.add(editor);
     }
@@ -784,7 +802,11 @@ class AnnotationEditorLayer {
    * @param {PointerEvent} event
    */
   pointerdown(event) {
-    if (this.#uiManager.getMode() === AnnotationEditorType.HIGHLIGHT) {
+    const mode = this.#uiManager.getMode();
+    if (
+      mode === AnnotationEditorType.HIGHLIGHT ||
+      mode === AnnotationEditorType.CUSTOM
+    ) {
       this.enableTextSelection();
     }
     if (this.#hadPointerDown) {
