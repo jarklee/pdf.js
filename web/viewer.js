@@ -13,10 +13,14 @@
  * limitations under the License.
  */
 
+import {
+  AnnotationEditorType,
+  PDFViewerApplication,
+  SharedToolbarRenderRegistry,
+} from "./app.js";
 import { RenderingStates, ScrollMode, SpreadMode } from "./ui_utils.js";
 import { AppOptions } from "./app_options.js";
 import { LinkTarget } from "./pdf_link_service.js";
-import { PDFViewerApplication } from "./app.js";
 
 /* eslint-disable-next-line no-unused-vars */
 const pdfjsVersion =
@@ -33,6 +37,8 @@ const AppConstants =
 window.PDFViewerApplication = PDFViewerApplication;
 window.PDFViewerApplicationConstants = AppConstants;
 window.PDFViewerApplicationOptions = AppOptions;
+window.PDFViewerSharedToolbarRenderRegistry = SharedToolbarRenderRegistry;
+window.PDFViewerAnnotationEditorType = AnnotationEditorType;
 
 function getViewerConfiguration() {
   return {
@@ -269,8 +275,25 @@ if (
   document.addEventListener("DOMContentLoaded", webViewerLoad, true);
 }
 
+SharedToolbarRenderRegistry.instance.register(
+  `editor_menu_${AnnotationEditorType.CUSTOM}`,
+  function renderCustomAnnotationMenu(params) {
+    const buttons = [];
+    const aiButton = document.createElement("button");
+    aiButton.textContent = "Ai comment";
+    aiButton.onclick = function () {
+      console.log("hello ai", params.data.text);
+      params.close();
+    };
+    buttons.push(aiButton);
+    return buttons;
+  }
+);
+
 export {
+  AnnotationEditorType as PDFViewerAnnotationEditorType,
   AppConstants as PDFViewerApplicationConstants,
   AppOptions as PDFViewerApplicationOptions,
   PDFViewerApplication,
+  SharedToolbarRenderRegistry as PDFViewerSharedToolbarRenderRegistry,
 };

@@ -70,6 +70,7 @@ import { DOMSVGFactory } from "./display/svg_factory.js";
 import { DrawLayer } from "./display/draw_layer.js";
 import { GlobalWorkerOptions } from "./display/worker_options.js";
 import { HighlightOutliner } from "./display/editor/drawers/highlight.js";
+import { SharedToolbarRenderRegistry } from "./display/editor/toolbar.js";
 import { TextLayer } from "./display/text_layer.js";
 import { XfaLayer } from "./display/xfa_layer.js";
 
@@ -124,6 +125,7 @@ export {
   RenderingCancelledException,
   setLayerDimensions,
   shadow,
+  SharedToolbarRenderRegistry,
   TextLayer,
   UnexpectedResponseException,
   Util,

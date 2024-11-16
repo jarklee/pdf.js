@@ -15,21 +15,29 @@
 
 import { noContextMenu } from "../display_utils.js";
 
-class CustomEditorButtonToolbar {
-  /**
-   *  {EditorToolbar} parent
-   */
-  parent = null;
+class SharedToolbarRenderRegistry {
+  static #instance = null;
 
-  renderButton() {
-    return null;
+  #menuType = {};
+
+  static get instance() {
+    if (!SharedToolbarRenderRegistry.#instance) {
+      SharedToolbarRenderRegistry.#instance = new SharedToolbarRenderRegistry();
+    }
+    return SharedToolbarRenderRegistry.#instance;
   }
 
-  destroy() {}
+  register(type, callback) {
+    this.#menuType[type] = callback;
+  }
 
-  notifyShown() {}
-
-  notifyHide() {}
+  render(type, args) {
+    const callback = this.#menuType[type];
+    if (callback) {
+      return callback(args);
+    }
+    return null;
+  }
 }
 
 class EditorToolbar {
@@ -130,19 +138,13 @@ class EditorToolbar {
   hide() {
     this.#toolbar.classList.add("hidden");
     this.#colorPicker?.hideDropdown();
-
-    if (this.#customEditorToolbar) {
-      this.#customEditorToolbar.notifyHide();
-    }
+    this.#customEditorToolbar?.hide();
   }
 
   show() {
     this.#toolbar.classList.remove("hidden");
     this.#altText?.shown();
-
-    if (this.#customEditorToolbar) {
-      this.#customEditorToolbar.notifyShown();
-    }
+    this.#customEditorToolbar?.shown();
   }
 
   #addDeleteButton() {
@@ -183,13 +185,10 @@ class EditorToolbar {
     this.#buttons.prepend(button, this.#divider);
   }
 
-  /**
-   * @param {CustomEditorButtonToolbar} toolbar
-   */
   addCustomEditorToolbar(toolbar) {
     this.#customEditorToolbar = toolbar;
     toolbar.parent = this;
-    const button = toolbar.renderButton();
+    const button = toolbar.render();
     if (button) {
       this.#addListenersToElement(button);
       this.#buttons.prepend(button, this.#divider);
@@ -216,7 +215,7 @@ class HighlightToolbar {
     this.#uiManager = uiManager;
   }
 
-  #render() {
+  _render() {
     const editToolbar = (this.#toolbar = document.createElement("div"));
     editToolbar.className = "editToolbar";
     editToolbar.setAttribute("role", "toolbar");
@@ -228,7 +227,7 @@ class HighlightToolbar {
     buttons.className = "buttons";
     editToolbar.append(buttons);
 
-    this.#addHighlightButton();
+    this._addHighlightButton();
 
     return editToolbar;
   }
@@ -260,7 +259,7 @@ class HighlightToolbar {
 
   show(parent, boxes, isLTR) {
     const [x, y] = this.#getLastPoint(boxes, isLTR);
-    const { style } = (this.#toolbar ||= this.#render());
+    const { style } = (this.#toolbar ||= this._render());
     parent.append(this.#toolbar);
     style.insetInlineEnd = `${100 * x}%`;
     style.top = `calc(${100 * y}% + var(--editor-toolbar-vert-offset))`;
@@ -270,7 +269,7 @@ class HighlightToolbar {
     this.#toolbar.remove();
   }
 
-  #addHighlightButton() {
+  _addHighlightButton() {
     const button = document.createElement("button");
     button.className = "highlightButton";
     button.tabIndex = 0;
@@ -292,4 +291,4 @@ class HighlightToolbar {
   }
 }
 
-export { CustomEditorButtonToolbar, EditorToolbar, HighlightToolbar };
+export { EditorToolbar, HighlightToolbar, SharedToolbarRenderRegistry };

@@ -503,6 +503,12 @@
   }
 }
 
+.annotationEditorLayer .annotationCustomEditor {
+  .editButtonsMenu {
+    display: flex;
+  }
+}
+
 .annotationEditorLayer .freeTextEditor {
   padding: calc(var(--freetext-padding) * var(--scale-factor));
   width: auto;

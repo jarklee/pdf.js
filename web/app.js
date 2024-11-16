@@ -18,6 +18,8 @@
 /** @typedef {import("../src/display/api.js").PDFDocumentProxy} PDFDocumentProxy */
 // eslint-disable-next-line max-len
 /** @typedef {import("../src/display/api.js").PDFDocumentLoadingTask} PDFDocumentLoadingTask */
+// eslint-disable-next-line max-len
+/** @typedef {import("../src/display/editor/toolbar.js").SharedToolbarRenderRegistry} SharedToolbarRenderRegistry */
 
 import {
   animationStarted,
@@ -53,6 +55,7 @@ import {
   MissingPDFException,
   PDFWorker,
   shadow,
+  SharedToolbarRenderRegistry,
   UnexpectedResponseException,
   version,
 } from "pdfjs-lib";
@@ -3108,4 +3111,8 @@ function beforeUnload(evt) {
   return false;
 }
 
-export { PDFViewerApplication };
+export {
+  AnnotationEditorType,
+  PDFViewerApplication,
+  SharedToolbarRenderRegistry,
+};

@@ -625,6 +625,8 @@ class AnnotationEditorUIManager {
 
   #highlightToolbar = null;
 
+  #annotationCustomToolbar = null;
+
   #commentToolbar = null;
 
   #idManager = new IdManager();
@@ -816,7 +818,6 @@ class AnnotationEditorUIManager {
     pageColors,
     highlightColors,
     enableHighlightFloatingButton,
-    enableCommentFloatingButton,
     enableUpdatedAddImage,
     enableNewAltTextWhenAddingImage,
     mlManager
@@ -886,6 +887,8 @@ class AnnotationEditorUIManager {
     this.#altTextManager?.destroy();
     this.#highlightToolbar?.hide();
     this.#highlightToolbar = null;
+    this.#annotationCustomToolbar?.hide();
+    this.#annotationCustomToolbar = null;
     this.#commentToolbar?.hide();
     this.#commentToolbar = null;
     if (this.#focusMainContainerTimeoutId) {
@@ -1073,7 +1076,7 @@ class AnnotationEditorUIManager {
   ) {
     const selection = document.getSelection();
     if (!selection || selection.isCollapsed) {
-      return;
+      return null;
     }
     const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
     const text = selection.toString();
@@ -1081,12 +1084,12 @@ class AnnotationEditorUIManager {
     const textLayer = anchorElement.closest(".textLayer");
     const boxes = this.getSelectionBoxes(textLayer);
     if (!boxes) {
-      return;
+      return null;
     }
     selection.empty();
 
     const layer = this.#getLayerForTextLayer(textLayer);
-    layer?.createAndAddNewEditor(
+    const editor = layer?.createAndAddNewEditor(
       { x: 0, y: 0 },
       false,
       {
@@ -1108,6 +1111,7 @@ class AnnotationEditorUIManager {
         /* updateButton = */ true
       );
     }
+    return editor;
   }
 
   highlightSelection(methodOfCreation = "") {
@@ -1115,7 +1119,10 @@ class AnnotationEditorUIManager {
   }
 
   highlightSelectionByCustomAnnotation(methodOfCreation = "") {
-    this.#highlightSelection(methodOfCreation, AnnotationEditorType.CUSTOM);
+    return this.#highlightSelection(
+      methodOfCreation,
+      AnnotationEditorType.CUSTOM
+    );
   }
 
   #displayHighlightToolbar() {
@@ -1152,6 +1159,7 @@ class AnnotationEditorUIManager {
     if (!selection || selection.isCollapsed) {
       if (this.#selectedTextNode) {
         this.#highlightToolbar?.hide();
+        this.#annotationCustomToolbar?.hide();
         this.#selectedTextNode = null;
         this.#dispatchUpdateStates({
           hasSelectedText: false,
@@ -1169,6 +1177,7 @@ class AnnotationEditorUIManager {
     if (!textLayer) {
       if (this.#selectedTextNode) {
         this.#highlightToolbar?.hide();
+        this.#annotationCustomToolbar?.hide();
         this.#selectedTextNode = null;
         this.#dispatchUpdateStates({
           hasSelectedText: false,
@@ -1178,6 +1187,7 @@ class AnnotationEditorUIManager {
     }
 
     this.#highlightToolbar?.hide();
+    this.#annotationCustomToolbar?.hide();
     this.#selectedTextNode = anchorNode;
     this.#dispatchUpdateStates({
       hasSelectedText: true,

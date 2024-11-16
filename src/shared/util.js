@@ -95,7 +95,8 @@ const AnnotationEditorParamsType = {
   HIGHLIGHT_THICKNESS: 33,
   HIGHLIGHT_FREE: 34,
   HIGHLIGHT_SHOW_ALL: 35,
-  CUSTOM_COLOR: 99,
+  ANNOTATION_CUSTOM_COLOR: 99,
+  ANNOTATION_CUSTOM_DATA: 991,
 };
 
 const AnnotationEditorTypeNames = {

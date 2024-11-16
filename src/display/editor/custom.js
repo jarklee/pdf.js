@@ -21,8 +21,8 @@ import {
 import { AnnotationCustomElement } from "../annotation_layer.js";
 import { AnnotationEditor } from "./editor.js";
 import { bindEvents } from "./tools.js";
-import { CustomEditorButtonToolbar } from "./toolbar.js";
 import { HighlightOutliner } from "./drawers/highlight.js";
+import { SharedToolbarRenderRegistry } from "./toolbar.js";
 
 /**
  * Basic draw editor in order to generate an Highlight annotation.
@@ -58,6 +58,8 @@ class AnnotationCustomEditor extends AnnotationEditor {
 
   #methodOfCreation = "";
 
+  #customData = null;
+
   static _defaultColor = null;
 
   static _defaultOpacity = 1;
@@ -75,6 +77,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
     this.#boxes = params.boxes || null;
     this.#methodOfCreation = params.methodOfCreation || "";
     this.#text = params.text || "";
+    this.#customData = params.customData;
     this._isDraggable = false;
 
     if (this.#boxes) {
@@ -104,6 +107,10 @@ class AnnotationCustomEditor extends AnnotationEditor {
       type: "custom",
       color: this._uiManager.highlightColorNames.get(this.color),
     };
+  }
+
+  get customData() {
+    return this.#customData;
   }
 
   static computeTelemetryFinalData(data) {
@@ -154,8 +161,11 @@ class AnnotationCustomEditor extends AnnotationEditor {
   /** @inheritdoc */
   updateParams(type, value) {
     switch (type) {
-      case AnnotationEditorParamsType.CUSTOM_COLOR:
+      case AnnotationEditorParamsType.ANNOTATION_CUSTOM_COLOR:
         this.#updateColor(value);
+        break;
+      case AnnotationEditorParamsType.ANNOTATION_CUSTOM_DATA:
+        this.#customData = value;
         break;
     }
   }
@@ -168,9 +178,10 @@ class AnnotationCustomEditor extends AnnotationEditor {
   get propertiesToUpdate() {
     return [
       [
-        AnnotationEditorParamsType.CUSTOM_COLOR,
+        AnnotationEditorParamsType.ANNOTATION_CUSTOM_COLOR,
         this.color || AnnotationCustomEditor._defaultColor,
       ],
+      [AnnotationEditorParamsType.ANNOTATION_CUSTOM_DATA, this.#customData],
     ];
   }
 
@@ -196,7 +207,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
       undo: setColorAndOpacity.bind(this, savedColor, savedOpacity),
       post: this._uiManager.updateUI.bind(this._uiManager, this),
       mustExec: true,
-      type: AnnotationEditorParamsType.CUSTOM_COLOR,
+      type: AnnotationEditorParamsType.ANNOTATION_CUSTOM_COLOR,
       overwriteIfSameType: true,
       keepUndo: true,
     });
@@ -259,7 +270,10 @@ class AnnotationCustomEditor extends AnnotationEditor {
 
   /** @inheritdoc */
   remove() {
-    // TODO: - notify remove for external
+    this._uiManager._eventBus.dispatch(
+      "annotation_custom_removed",
+      this.serializeInfo()
+    );
     this.#cleanDrawLayer();
     this._reportTelemetry({
       action: "deleted",
@@ -509,9 +523,10 @@ class AnnotationCustomEditor extends AnnotationEditor {
       };
     }
 
-    const { color, quadPoints, opacity } = data;
+    const { color, quadPoints, opacity, customData } = data;
     const editor = await super.deserialize(data, parent, uiManager);
 
+    editor.#customData = customData;
     editor.color = Util.makeHexColor(...color);
     editor.#opacity = opacity || 1;
     editor.annotationElementId = data.id || null;
@@ -562,6 +577,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
       rect,
       rotation: this.#getRotation(),
       structTreeParentId: this._structTreeParentId,
+      customData: this.#customData,
     };
 
     if (this.annotationElementId && !this.#hasElementChanged(serialized)) {
@@ -570,6 +586,13 @@ class AnnotationCustomEditor extends AnnotationEditor {
 
     serialized.id = this.annotationElementId;
     return serialized;
+  }
+
+  serializeInfo() {
+    const data = this.serialize();
+    data.uiNodeId = this.id;
+    data.text = this.#text;
+    return data;
   }
 
   #hasElementChanged(serialized) {
@@ -591,20 +614,86 @@ class AnnotationCustomEditor extends AnnotationEditor {
   }
 }
 
-class AnnotationCustomCreateToolbar { }
-
-class AnnotationCustomEditToolbar extends CustomEditorButtonToolbar {
-  /**
-   * @param {AnnotationCustomEditor} editor
-   */
+class AnnotationCustomEditToolbar {
   constructor(editor) {
-    super();
-    this.editor = editor;
+    this.#editor = editor;
   }
 
-  render() { }
+  /**
+   * @type {AnnotationCustomEditor}
+   */
+  #editor = null;
 
-  destroy() { }
+  /**
+   * @type {Element|null}
+   */
+  #wrappedEl = null;
+
+  parent = null;
+
+  render() {
+    if (this.#wrappedEl) {
+      return this.#wrappedEl;
+    }
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("class", "editButtonsMenu");
+    this.#wrappedEl = wrapper;
+    return wrapper;
+  }
+
+  destroy() {
+    this.#wrappedEl?.remove();
+    this.#wrappedEl = null;
+  }
+
+  shown() {
+    const uiManager = this.#editor._uiManager;
+    const wrappedEl = this.#wrappedEl;
+    const parent = this.parent;
+    const payload = {
+      shown: true,
+      data: this.#editor.serializeInfo(),
+      position: wrappedEl.getClientRects()[0],
+    };
+    // add action buttons
+    wrappedEl.innerHTML = "";
+    const buttons = SharedToolbarRenderRegistry.instance.render(
+      `editor_menu_${AnnotationEditorType.CUSTOM}`,
+      {
+        ...payload,
+        editor: this.#editor,
+        uiManager,
+        wrappedEl,
+        close() {
+          parent.hide();
+        },
+      }
+    );
+    if (buttons) {
+      wrappedEl.classList.remove("hide");
+      if (Array.isArray(buttons)) {
+        for (const button of buttons) {
+          wrappedEl.append(button);
+        }
+      } else if (buttons) {
+        wrappedEl.append(buttons);
+      }
+    } else {
+      wrappedEl.classList.add("hide");
+    }
+
+    uiManager._eventBus.dispatch("annotation_custom_menu", payload);
+  }
+
+  hide() {
+    this.#wrappedEl.innerHTML = "";
+    const uiManager = this.#editor._uiManager;
+    uiManager._eventBus.dispatch("annotation_custom_menu", {
+      shown: false,
+      data: this.#editor.serializeInfo(),
+      position: this.#wrappedEl.getClientRects()[0],
+    });
+  }
 }
 
 export { AnnotationCustomEditor };
