@@ -42,6 +42,7 @@ import {
   TextLayerMode,
 } from "./ui_utils.js";
 import {
+  AnnotationEditorParamsType,
   AnnotationEditorType,
   build,
   FeatureTest,
@@ -3112,6 +3113,7 @@ function beforeUnload(evt) {
 }
 
 export {
+  AnnotationEditorParamsType,
   AnnotationEditorType,
   PDFViewerApplication,
   SharedToolbarRenderRegistry,

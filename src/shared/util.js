@@ -97,6 +97,7 @@ const AnnotationEditorParamsType = {
   HIGHLIGHT_SHOW_ALL: 35,
   ANNOTATION_CUSTOM_COLOR: 99,
   ANNOTATION_CUSTOM_DATA: 991,
+  ANNOTATION_CUSTOM_EXTERNAL_ID: 992,
 };
 
 const AnnotationEditorTypeNames = {

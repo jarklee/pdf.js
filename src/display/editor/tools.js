@@ -1103,6 +1103,9 @@ class AnnotationEditorUIManager {
       },
       expectMode
     );
+    if (editor) {
+      this._eventBus.dispatch("highlightSelection", editor);
+    }
     if (this.#mode !== expectMode) {
       this.switchToMode(expectMode);
       this.showAllEditors(
@@ -1888,6 +1891,15 @@ class AnnotationEditorUIManager {
       !this.#deletedAnnotationsElementIds.has(editor.annotationElementId)
     ) {
       this.#annotationStorage?.remove(editor.id);
+    }
+  }
+
+  removeEditorByPredicate(predicate) {
+    for (const key of this.#allEditors.keys()) {
+      const editor = this.#allEditors.get(key);
+      if (predicate(key, editor)) {
+        editor.remove();
+      }
     }
   }
 

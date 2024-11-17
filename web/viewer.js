@@ -14,6 +14,7 @@
  */
 
 import {
+  AnnotationEditorParamsType,
   AnnotationEditorType,
   PDFViewerApplication,
   SharedToolbarRenderRegistry,
@@ -39,6 +40,7 @@ window.PDFViewerApplicationConstants = AppConstants;
 window.PDFViewerApplicationOptions = AppOptions;
 window.PDFViewerSharedToolbarRenderRegistry = SharedToolbarRenderRegistry;
 window.PDFViewerAnnotationEditorType = AnnotationEditorType;
+window.PDFViewerAnnotationEditorParamsType = AnnotationEditorParamsType;
 
 function getViewerConfiguration() {
   return {
@@ -259,7 +261,9 @@ function webViewerLoad() {
       document.dispatchEvent(event);
     }
   }
-  PDFViewerApplication.run(config);
+  PDFViewerApplication.run(config).then(function () {
+    window.dispatchEvent(new CustomEvent("pdfviewloaded"));
+  });
 }
 
 // Block the "load" event until all pages are loaded, to ensure that printing
@@ -275,22 +279,8 @@ if (
   document.addEventListener("DOMContentLoaded", webViewerLoad, true);
 }
 
-SharedToolbarRenderRegistry.instance.register(
-  `editor_menu_${AnnotationEditorType.CUSTOM}`,
-  function renderCustomAnnotationMenu(params) {
-    const buttons = [];
-    const aiButton = document.createElement("button");
-    aiButton.textContent = "Ai comment";
-    aiButton.onclick = function () {
-      console.log("hello ai", params.data.text);
-      params.close();
-    };
-    buttons.push(aiButton);
-    return buttons;
-  }
-);
-
 export {
+  AnnotationEditorParamsType as PDFViewerAnnotationEditorParamsType,
   AnnotationEditorType as PDFViewerAnnotationEditorType,
   AppConstants as PDFViewerApplicationConstants,
   AppOptions as PDFViewerApplicationOptions,

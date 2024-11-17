@@ -60,6 +60,8 @@ class AnnotationCustomEditor extends AnnotationEditor {
 
   #customData = null;
 
+  externalId = null;
+
   static _defaultColor = null;
 
   static _defaultOpacity = 1;
@@ -77,6 +79,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
     this.#boxes = params.boxes || null;
     this.#methodOfCreation = params.methodOfCreation || "";
     this.#text = params.text || "";
+    this.externalId = params.externalId;
     this.#customData = params.customData;
     this._isDraggable = false;
 
@@ -111,6 +114,36 @@ class AnnotationCustomEditor extends AnnotationEditor {
 
   get customData() {
     return this.#customData;
+  }
+
+  get coordBoxes() {
+    const boxes = this.#boxes;
+    if (!boxes) {
+      return null;
+    }
+    const pageBoxes = [];
+    const layerBoxes = [];
+    const [pageWidth, pageHeight] = this.pageDimensions;
+    const [pageX, pageY] = this.pageTranslation;
+    const [width, height] = this.parentDimensions;
+    for (const box of boxes) {
+      pageBoxes.push({
+        x: box.x * pageWidth + pageX,
+        y: box.y * pageHeight + pageY,
+        width: box.width * pageWidth,
+        height: box.height * pageHeight,
+      });
+      layerBoxes.push({
+        x: box.x * width,
+        y: box.y * height,
+        width: box.width * width,
+        height: box.height * height,
+      });
+    }
+    return {
+      page: pageBoxes,
+      layer: layerBoxes,
+    };
   }
 
   static computeTelemetryFinalData(data) {
@@ -167,6 +200,9 @@ class AnnotationCustomEditor extends AnnotationEditor {
       case AnnotationEditorParamsType.ANNOTATION_CUSTOM_DATA:
         this.#customData = value;
         break;
+      case AnnotationEditorParamsType.ANNOTATION_CUSTOM_EXTERNAL_ID:
+        this.externalId = value;
+        break;
     }
   }
 
@@ -182,6 +218,10 @@ class AnnotationCustomEditor extends AnnotationEditor {
         this.color || AnnotationCustomEditor._defaultColor,
       ],
       [AnnotationEditorParamsType.ANNOTATION_CUSTOM_DATA, this.#customData],
+      [
+        AnnotationEditorParamsType.ANNOTATION_CUSTOM_EXTERNAL_ID,
+        this.externalId,
+      ],
     ];
   }
 
@@ -527,6 +567,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
     const editor = await super.deserialize(data, parent, uiManager);
 
     editor.#customData = customData;
+    editor.externalId = data.externalId;
     editor.color = Util.makeHexColor(...color);
     editor.#opacity = opacity || 1;
     editor.annotationElementId = data.id || null;
@@ -540,9 +581,9 @@ class AnnotationCustomEditor extends AnnotationEditor {
       for (let i = 0; i < quadPoints.length; i += 8) {
         boxes.push({
           x: (quadPoints[i] - pageX) / pageWidth,
-          y: 1 - (quadPoints[i + 1] - pageY) / pageHeight,
+          y: 1 - (quadPoints[i + 5] - pageY) / pageHeight,
           width: (quadPoints[i + 2] - quadPoints[i]) / pageWidth,
-          height: (quadPoints[i + 1] - quadPoints[i + 5]) / pageHeight,
+          height: (quadPoints[i + 5] - quadPoints[i + 1]) / pageHeight,
         });
       }
       editor.#createOutlines();
@@ -578,6 +619,7 @@ class AnnotationCustomEditor extends AnnotationEditor {
       rotation: this.#getRotation(),
       structTreeParentId: this._structTreeParentId,
       customData: this.#customData,
+      externalId: this.externalId,
     };
 
     if (this.annotationElementId && !this.#hasElementChanged(serialized)) {
@@ -592,6 +634,8 @@ class AnnotationCustomEditor extends AnnotationEditor {
     const data = this.serialize();
     data.uiNodeId = this.id;
     data.text = this.#text;
+    data.boxes = this.coordBoxes;
+    data.quadPoints = [...data.quadPoints];
     return data;
   }
 
@@ -637,6 +681,7 @@ class AnnotationCustomEditToolbar {
     }
     const wrapper = document.createElement("div");
     wrapper.setAttribute("class", "editButtonsMenu");
+    wrapper.setAttribute("id", this.#editor._uiManager.getId());
     this.#wrappedEl = wrapper;
     return wrapper;
   }
@@ -653,6 +698,7 @@ class AnnotationCustomEditToolbar {
     const payload = {
       shown: true,
       data: this.#editor.serializeInfo(),
+      wrapperId: wrappedEl.getAttribute("id"),
       position: wrappedEl.getClientRects()[0],
     };
     // add action buttons

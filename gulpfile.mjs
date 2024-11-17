@@ -572,6 +572,24 @@ function createWebBundle(defines, options) {
     .pipe(webpack2Stream(viewerFileConfig));
 }
 
+function createExtensionBundle(defines, options) {
+  const viewerFileConfig = createWebpackConfig(
+    defines,
+    {
+      filename: "extension_plugin.mjs",
+      library: {
+        type: "module",
+      },
+    },
+    {
+      defaultPreferencesDir: options.defaultPreferencesDir,
+    }
+  );
+  return gulp
+    .src("./web/extension_plugin.js", { encoding: false })
+    .pipe(webpack2Stream(viewerFileConfig));
+}
+
 function createGVWebBundle(defines, options) {
   const viewerFileConfig = createWebpackConfig(
     defines,
@@ -1055,6 +1073,11 @@ function buildGeneric(defines, dir) {
         ? "generic/"
         : "generic-legacy/",
     }).pipe(gulp.dest(dir + "web")),
+    createExtensionBundle(defines, {
+      defaultPreferencesDir: defines.SKIP_BABEL
+        ? "generic/"
+        : "generic-legacy/",
+    }).pipe(gulp.dest(dir + "web")),
     gulp
       .src(COMMON_WEB_FILES, { base: "web/", encoding: false })
       .pipe(gulp.dest(dir + "web")),
@@ -1084,6 +1107,7 @@ function buildGeneric(defines, dir) {
     gulp
       .src("web/compressed.tracemonkey-pldi-09.pdf", { encoding: false })
       .pipe(gulp.dest(dir + "web")),
+    gulp.src(["web/static/**"]).pipe(gulp.dest(dir + "web/static")),
   ]);
 }
 
