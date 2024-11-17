@@ -335,6 +335,36 @@ describe("Highlight Editor", () => {
           expect(serialized.outlines[0].length)
             .withContext(`In ${browserName}`)
             .toEqual(8);
+
+          // Check quadPoints order
+          for (let i = 0; i < serialized.quadPoints.length; i += 8) {
+            // correct order is tL, tR, bL, bR
+
+            // left x for top and bottom point must equal
+            expect(serialized.quadPoints[i])
+              .withContext(`In ${browserName}`)
+              .toEqual(serialized.quadPoints[4]);
+            // right x for top and bottom point must equal
+            expect(serialized.quadPoints[i + 2])
+              .withContext(`In ${browserName}`)
+              .toEqual(serialized.quadPoints[i + 6]);
+            // top y for left and right point must equal
+            expect(serialized.quadPoints[i + 1])
+              .withContext(`In ${browserName}`)
+              .toEqual(serialized.quadPoints[i + 3]);
+            // bottom y for left and right point must equal
+            expect(serialized.quadPoints[i + 5])
+              .withContext(`In ${browserName}`)
+              .toEqual(serialized.quadPoints[i + 7]);
+            // left x must be less than right x
+            expect(serialized.quadPoints[i])
+              .withContext(`In ${browserName}`)
+              .toBeLessThan(serialized.quadPoints[i + 2]);
+            // top y must be greater than bottom y
+            expect(serialized.quadPoints[i + 1])
+              .withContext(`In ${browserName}`)
+              .toBeGreaterThan(serialized.quadPoints[i + 5]);
+          }
         })
       );
     });
