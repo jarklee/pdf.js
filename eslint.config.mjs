@@ -35,6 +35,7 @@ export default [
       "external/builder/fixtures_babel/",
       "external/quickjs/",
       "external/openjpeg/",
+      "test/stats/results/",
       "test/tmp/",
       "test/pdfs/",
       "web/locale/",
@@ -313,6 +314,12 @@ export default [
       "template-curly-spacing": ["error", "never"],
     },
   },
+  {
+    files: jsFiles("src"),
+    rules: {
+      "no-console": "error",
+    },
+  },
 
   /* ======================================================================== *\
                             Test-specific rules
@@ -354,11 +361,13 @@ export default [
     files: jsFiles("test/unit"),
     rules: {
       "import/no-unresolved": ["error", { ignore: ["pdfjs/"] }],
+      "no-console": ["error", { allow: ["warn", "error"] }],
     },
   },
   {
     files: jsFiles("test/integration"),
     rules: {
+      "no-console": ["error", { allow: ["warn", "error"] }],
       "no-restricted-syntax": [
         "error",
         {
