@@ -194,6 +194,7 @@ class Toolbar {
     const {
       editorHighlightColorPicker,
       editorHighlightButton,
+      editorCustomButton,
       pageNumber,
       scaleSelect,
     } = this.#opts;
@@ -257,11 +258,14 @@ class Toolbar {
       "annotationeditormodechanged",
       this.#editorModeChanged.bind(this)
     );
+    console.log(this.#opts);
     eventBus._on("showannotationeditorui", ({ mode }) => {
       switch (mode) {
         case AnnotationEditorType.HIGHLIGHT:
           editorHighlightButton.click();
           break;
+        case AnnotationEditorType.CUSTOM:
+          editorCustomButton.click();
       }
     });
     eventBus._on("toolbardensity", this.#updateToolbarDensity.bind(this));
