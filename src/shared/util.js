@@ -95,6 +95,7 @@ const AnnotationEditorParamsType = {
   HIGHLIGHT_THICKNESS: 33,
   HIGHLIGHT_FREE: 34,
   HIGHLIGHT_SHOW_ALL: 35,
+  DRAW_STEP: 41,
   ANNOTATION_CUSTOM_COLOR: 99,
   ANNOTATION_CUSTOM_DATA: 991,
   ANNOTATION_CUSTOM_EXTERNAL_ID: 992,
@@ -1095,21 +1096,12 @@ function normalizeUnicode(str) {
 function getUuid() {
   if (
     (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) ||
-    (typeof crypto !== "undefined" && typeof crypto?.randomUUID === "function")
+    typeof crypto.randomUUID === "function"
   ) {
     return crypto.randomUUID();
   }
   const buf = new Uint8Array(32);
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto?.getRandomValues === "function"
-  ) {
-    crypto.getRandomValues(buf);
-  } else {
-    for (let i = 0; i < 32; i++) {
-      buf[i] = Math.floor(Math.random() * 255);
-    }
-  }
+  crypto.getRandomValues(buf);
   return bytesToString(buf);
 }
 
@@ -1150,6 +1142,19 @@ function fromBase64Util(str) {
     return Uint8Array.fromBase64(str);
   }
   return stringToBytes(atob(str));
+}
+
+// TODO: Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1928493
+//       is fixed.
+if (
+  (typeof PDFJSDev === "undefined" || PDFJSDev.test("SKIP_BABEL")) &&
+  typeof Promise.try !== "function"
+) {
+  Promise.try = function (fn, ...args) {
+    return new Promise(resolve => {
+      resolve(fn(...args));
+    });
+  };
 }
 
 export {

@@ -1266,6 +1266,13 @@ describe("Interaction", () => {
           await page.waitForFunction(
             `${getQuerySelector("27R")}.value === "HEAO "`
           );
+
+          // The typing actions in the first textbox caused sandbox events to be
+          // queued. We don't close the document between tests, so we have to
+          // flush them here, by clicking the second textbox, so they don't leak
+          // through to the following test.
+          await page.click(getSelector("28R"));
+          await waitForSandboxTrip(page);
         })
       );
     });
@@ -1276,30 +1283,19 @@ describe("Interaction", () => {
           await waitForScripting(page);
 
           await page.click(getSelector("28R"));
-          await page.$eval(getSelector("28R"), el =>
-            el.setSelectionRange(0, 0)
-          );
-
+          await page.keyboard.press("Home");
           await page.type(getSelector("28R"), "Hello");
           await page.waitForFunction(
-            `${getQuerySelector("28R")}.value !== "123"`
+            `${getQuerySelector("28R")}.value === "Hello123"`
           );
 
-          let text = await page.$eval(getSelector("28R"), el => el.value);
-          expect(text).withContext(`In ${browserName}`).toEqual("Hello123");
-
-          // The action will trigger a calculateNow which itself
-          // will trigger a resetForm (inducing a calculateNow) and a
-          // calculateNow.
+          // The action triggers a `calculateNow` which in turn triggers a
+          // `resetForm (inducing a `calculateNow`) and a `calculateNow`.
+          // Without infinite loop prevention the field would be empty.
           await page.click("[data-annotation-id='31R']");
-
           await page.waitForFunction(
-            `${getQuerySelector("28R")}.value !== "Hello123"`
+            `${getQuerySelector("28R")}.value === "123"`
           );
-
-          // Without preventing against infinite loop the field is empty.
-          text = await page.$eval(getSelector("28R"), el => el.value);
-          expect(text).withContext(`In ${browserName}`).toEqual("123");
         })
       );
     });
@@ -2522,6 +2518,44 @@ describe("Interaction", () => {
           await waitForSandboxTrip(page);
           await page.click("[data-annotation-id='44R']");
           await checkColor([0, 0, 255]);
+        })
+      );
+    });
+  });
+
+  describe("Date creation must be timezone consistent", () => {
+    let pages;
+
+    beforeAll(async () => {
+      pages = await loadAndWait("bug1934157.pdf", "[data-annotation-id='24R']");
+    });
+
+    afterAll(async () => {
+      await closePages(pages);
+    });
+
+    it("must check that date entered by the user is consistent", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          if (browserName === "firefox") {
+            // Skip the test for Firefox as it doesn't support the timezone
+            // feature yet with BiDi.
+            // See https://github.com/puppeteer/puppeteer/issues/13344.
+            // TODO: Remove this check once the issue is fixed.
+            return;
+          }
+
+          await waitForScripting(page);
+
+          await page.emulateTimezone("Pacific/Honolulu");
+
+          const expectedDate = "02/01/2000";
+          await page.type(getSelector("24R"), expectedDate);
+          await page.click(getSelector("25R"));
+          await waitForSandboxTrip(page);
+
+          const date = await page.$eval(getSelector("24R"), el => el.value);
+          expect(date).withContext(`In ${browserName}`).toEqual(expectedDate);
         })
       );
     });

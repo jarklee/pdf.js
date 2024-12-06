@@ -58,6 +58,7 @@ import {
   PDFWorker,
   shadow,
   SharedToolbarRenderRegistry,
+  stopEvent,
   UnexpectedResponseException,
   version,
 } from "pdfjs-lib";
@@ -73,6 +74,7 @@ import { AltTextManager } from "web-alt_text_manager";
 import { AnnotationEditorParams } from "web-annotation_editor_params";
 import { CaretBrowsingMode } from "./caret_browsing.js";
 import { DownloadManager } from "web-download_manager";
+import { EditorUndoBar } from "./editor_undo_bar.js";
 import { OverlayManager } from "./overlay_manager.js";
 import { PasswordPrompt } from "./password_prompt.js";
 import { PDFAttachmentViewer } from "web-pdf_attachment_viewer";
@@ -96,6 +98,14 @@ import { Toolbar } from "web-toolbar";
 import { ViewHistory } from "./view_history.js";
 
 const FORCE_PAGES_LOADED_TIMEOUT = 10000; // ms
+
+// The 35 is coming from:
+//  https://searchfox.org/mozilla-central/source/gfx/layers/apz/src/GestureEventListener.cpp#36
+//
+// The properties TouchEvent::screenX/Y are in screen CSS pixels:
+//  https://developer.mozilla.org/en-US/docs/Web/API/Touch/screenX#examples
+// MIN_TOUCH_DISTANCE_TO_PINCH is in CSS pixels.
+const MIN_TOUCH_DISTANCE_TO_PINCH = 35 / (window.devicePixelRatio || 1);
 
 const ViewOnLoad = {
   UNKNOWN: -1,
@@ -184,9 +194,11 @@ const PDFViewerApplication = {
   _title: document.title,
   _printAnnotationStoragePromise: null,
   _touchInfo: null,
+  _isPinching: false,
   _isCtrlKeyDown: false,
   _caretBrowsing: null,
   _isScrolling: false,
+  editorUndoBar: null,
 
   // Called once when the document is loaded.
   async initialize(appConfig) {
@@ -456,6 +468,10 @@ const PDFViewerApplication = {
         : null;
     }
 
+    if (appConfig.editorUndoBar) {
+      this.editorUndoBar = new EditorUndoBar(appConfig.editorUndoBar, eventBus);
+    }
+
     const enableHWA = AppOptions.get("enableHWA");
     const pdfViewer = new PDFViewer({
       container,
@@ -465,6 +481,7 @@ const PDFViewerApplication = {
       linkService: pdfLinkService,
       downloadManager,
       altTextManager,
+      editorUndoBar: this.editorUndoBar,
       findController,
       scriptingManager:
         AppOptions.get("enableScripting") && pdfScriptingManager,
@@ -720,8 +737,7 @@ const PDFViewerApplication = {
           if (item.type === "application/pdf") {
             evt.dataTransfer.dropEffect =
               evt.dataTransfer.effectAllowed === "copy" ? "copy" : "move";
-            evt.preventDefault();
-            evt.stopPropagation();
+            stopEvent(evt);
             return;
           }
         }
@@ -730,8 +746,7 @@ const PDFViewerApplication = {
         if (evt.dataTransfer.files?.[0].type !== "application/pdf") {
           return;
         }
-        evt.preventDefault();
-        evt.stopPropagation();
+        stopEvent(evt);
         eventBus.dispatch("fileinputchange", {
           source: this,
           fileInput: evt.dataTransfer,
@@ -2644,10 +2659,10 @@ function onTouchStart(evt) {
     [touch0, touch1] = [touch1, touch0];
   }
   this._touchInfo = {
-    touch0X: touch0.pageX,
-    touch0Y: touch0.pageY,
-    touch1X: touch1.pageX,
-    touch1Y: touch1.pageY,
+    touch0X: touch0.screenX,
+    touch0Y: touch0.screenY,
+    touch1X: touch1.screenX,
+    touch1Y: touch1.screenY,
   };
 }
 
@@ -2661,8 +2676,8 @@ function onTouchMove(evt) {
   if (touch0.identifier > touch1.identifier) {
     [touch0, touch1] = [touch1, touch0];
   }
-  const { pageX: page0X, pageY: page0Y } = touch0;
-  const { pageX: page1X, pageY: page1Y } = touch1;
+  const { screenX: screen0X, screenY: screen0Y } = touch0;
+  const { screenX: screen1X, screenY: screen1Y } = touch1;
   const {
     touch0X: pTouch0X,
     touch0Y: pTouch0Y,
@@ -2670,60 +2685,36 @@ function onTouchMove(evt) {
     touch1Y: pTouch1Y,
   } = _touchInfo;
 
+  const prevGapX = pTouch1X - pTouch0X;
+  const prevGapY = pTouch1Y - pTouch0Y;
+  const currGapX = screen1X - screen0X;
+  const currGapY = screen1Y - screen0Y;
+
+  const distance = Math.hypot(currGapX, currGapY) || 1;
+  const pDistance = Math.hypot(prevGapX, prevGapY) || 1;
   if (
-    Math.abs(pTouch0X - page0X) <= 1 &&
-    Math.abs(pTouch0Y - page0Y) <= 1 &&
-    Math.abs(pTouch1X - page1X) <= 1 &&
-    Math.abs(pTouch1Y - page1Y) <= 1
+    !this._isPinching &&
+    Math.abs(pDistance - distance) <= MIN_TOUCH_DISTANCE_TO_PINCH
   ) {
-    // Touches are really too close and it's hard do some basic
-    // geometry in order to guess something.
     return;
   }
 
-  _touchInfo.touch0X = page0X;
-  _touchInfo.touch0Y = page0Y;
-  _touchInfo.touch1X = page1X;
-  _touchInfo.touch1Y = page1Y;
-
-  if (pTouch0X === page0X && pTouch0Y === page0Y) {
-    // First touch is fixed, if the vectors are collinear then we've a pinch.
-    const v1X = pTouch1X - page0X;
-    const v1Y = pTouch1Y - page0Y;
-    const v2X = page1X - page0X;
-    const v2Y = page1Y - page0Y;
-    const det = v1X * v2Y - v1Y * v2X;
-    // 0.02 is approximatively sin(0.15deg).
-    if (Math.abs(det) > 0.02 * Math.hypot(v1X, v1Y) * Math.hypot(v2X, v2Y)) {
-      return;
-    }
-  } else if (pTouch1X === page1X && pTouch1Y === page1Y) {
-    // Second touch is fixed, if the vectors are collinear then we've a pinch.
-    const v1X = pTouch0X - page1X;
-    const v1Y = pTouch0Y - page1Y;
-    const v2X = page0X - page1X;
-    const v2Y = page0Y - page1Y;
-    const det = v1X * v2Y - v1Y * v2X;
-    if (Math.abs(det) > 0.02 * Math.hypot(v1X, v1Y) * Math.hypot(v2X, v2Y)) {
-      return;
-    }
-  } else {
-    const diff0X = page0X - pTouch0X;
-    const diff1X = page1X - pTouch1X;
-    const diff0Y = page0Y - pTouch0Y;
-    const diff1Y = page1Y - pTouch1Y;
-    const dotProduct = diff0X * diff1X + diff0Y * diff1Y;
-    if (dotProduct >= 0) {
-      // The two touches go in almost the same direction.
-      return;
-    }
-  }
+  _touchInfo.touch0X = screen0X;
+  _touchInfo.touch0Y = screen0Y;
+  _touchInfo.touch1X = screen1X;
+  _touchInfo.touch1Y = screen1Y;
 
   evt.preventDefault();
 
-  const origin = [(page0X + page1X) / 2, (page0Y + page1Y) / 2];
-  const distance = Math.hypot(page0X - page1X, page0Y - page1Y) || 1;
-  const pDistance = Math.hypot(pTouch0X - pTouch1X, pTouch0Y - pTouch1Y) || 1;
+  if (!this._isPinching) {
+    // Start pinching.
+    this._isPinching = true;
+
+    // We return here else the first pinch is a bit too much
+    return;
+  }
+
+  const origin = [(screen0X + screen1X) / 2, (screen0Y + screen1Y) / 2];
   if (supportsPinchToZoom) {
     const newScaleFactor = this._accumulateFactor(
       pdfViewer.currentScale,
@@ -2750,9 +2741,10 @@ function onTouchEnd(evt) {
   this._touchInfo = null;
   this._touchUnusedTicks = 0;
   this._touchUnusedFactor = 1;
+  this._isPinching = false;
 }
 
-function onClick(evt) {
+function closeSecondaryToolbar(evt) {
   if (!this.secondaryToolbar?.isOpen) {
     return;
   }
@@ -2769,6 +2761,20 @@ function onClick(evt) {
   }
 }
 
+function closeEditorUndoBar(evt) {
+  if (!this.editorUndoBar?.isOpen) {
+    return;
+  }
+  if (this.appConfig.secondaryToolbar?.toolbar.contains(evt.target)) {
+    this.editorUndoBar.hide();
+  }
+}
+
+function onClick(evt) {
+  closeSecondaryToolbar.call(this, evt);
+  closeEditorUndoBar.call(this, evt);
+}
+
 function onKeyUp(evt) {
   // evt.ctrlKey is false hence we use evt.key.
   if (evt.key === "Control") {
@@ -2778,6 +2784,20 @@ function onKeyUp(evt) {
 
 function onKeyDown(evt) {
   this._isCtrlKeyDown = evt.key === "Control";
+
+  if (
+    this.editorUndoBar?.isOpen &&
+    evt.keyCode !== 9 &&
+    evt.keyCode !== 16 &&
+    !(
+      (evt.keyCode === 13 || evt.keyCode === 32) &&
+      getActiveOrFocusedElement() === this.appConfig.editorUndoBar.undoButton
+    )
+  ) {
+    // Hide undo bar on keypress except for Shift, Tab, Shift+Tab.
+    // Also avoid hiding if the undo button is triggered.
+    this.editorUndoBar.hide();
+  }
 
   if (this.overlayManager.active) {
     return;

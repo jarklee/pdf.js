@@ -65,6 +65,7 @@ import {
   PixelsPerInch,
   RenderingCancelledException,
   setLayerDimensions,
+  stopEvent,
 } from "./display/display_utils.js";
 import { AnnotationEditorLayer } from "./display/editor/annotation_editor_layer.js";
 import { AnnotationLayer } from "./display/annotation_layer.js";
@@ -130,6 +131,7 @@ export {
   setLayerDimensions,
   shadow,
   SharedToolbarRenderRegistry,
+  stopEvent,
   TextLayer,
   UnexpectedResponseException,
   Util,

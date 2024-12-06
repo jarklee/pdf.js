@@ -28,6 +28,7 @@ import {
   getSelectedEditors,
   getSerialized,
   hover,
+  isCanvasWhite,
   kbBigMoveDown,
   kbBigMoveLeft,
   kbBigMoveRight,
@@ -988,27 +989,8 @@ describe("FreeText Editor", () => {
         pages.map(async ([browserName, page]) => {
           await switchToFreeText(page);
 
-          const isEditorWhite = editorRect =>
-            page.evaluate(rect => {
-              const canvas = document.querySelector(".canvasWrapper canvas");
-              const ctx = canvas.getContext("2d");
-              rect ||= {
-                x: 0,
-                y: 0,
-                width: canvas.width,
-                height: canvas.height,
-              };
-              const { data } = ctx.getImageData(
-                rect.x,
-                rect.y,
-                rect.width,
-                rect.height
-              );
-              return data.every(x => x === 0xff);
-            }, editorRect);
-
           // The page has been re-rendered but with no freetext annotations.
-          let isWhite = await isEditorWhite();
+          let isWhite = await isCanvasWhite(page, 1);
           expect(isWhite).withContext(`In ${browserName}`).toBeTrue();
 
           let editorIds = await getEditors(page, "freeText");
@@ -1066,7 +1048,7 @@ describe("FreeText Editor", () => {
           editorIds = await getEditors(page, "freeText");
           expect(editorIds.length).withContext(`In ${browserName}`).toEqual(1);
 
-          isWhite = await isEditorWhite(editorRect);
+          isWhite = await isCanvasWhite(page, 1, editorRect);
           expect(isWhite).withContext(`In ${browserName}`).toBeTrue();
 
           // Check we've now a div containing the text.
@@ -3684,6 +3666,127 @@ describe("FreeText Editor", () => {
 
           const serialized = await getSerialized(page, x => x.value);
           expect(serialized[0]).withContext(`In ${browserName}`).toEqual(data);
+        })
+      );
+    });
+  });
+
+  describe("Undo deletion popup has the expected behaviour", () => {
+    let pages;
+    const editorSelector = getEditorSelector(0);
+
+    beforeEach(async () => {
+      pages = await loadAndWait("tracemonkey.pdf", ".annotationEditorLayer");
+    });
+
+    afterEach(async () => {
+      await closePages(pages);
+    });
+
+    it("must check that deleting a FreeText editor can be undone using the undo button", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          await switchToFreeText(page);
+
+          const rect = await getRect(page, ".annotationEditorLayer");
+          const data = "Hello PDF.js World !!";
+          await page.mouse.click(rect.x + 100, rect.y + 100);
+          await page.waitForSelector(editorSelector, {
+            visible: true,
+          });
+          await page.type(`${editorSelector} .internal`, data);
+
+          // Commit.
+          await page.keyboard.press("Escape");
+          await page.waitForSelector(`${editorSelector} .overlay.enabled`);
+          await waitForSerialized(page, 1);
+
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
+          await waitForSerialized(page, 0);
+
+          await page.waitForSelector("#editorUndoBar:not([hidden])");
+          await page.click("#editorUndoBarUndoButton");
+          await waitForSerialized(page, 1);
+          await page.waitForSelector(editorSelector);
+        })
+      );
+    });
+
+    it("must check that the undo deletion popup displays the correct message", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          await switchToFreeText(page);
+
+          const rect = await getRect(page, ".annotationEditorLayer");
+          const data = "Hello PDF.js World !!";
+          await page.mouse.click(rect.x + 100, rect.y + 100);
+          await page.waitForSelector(editorSelector, {
+            visible: true,
+          });
+          await page.type(`${editorSelector} .internal`, data);
+
+          // Commit.
+          await page.keyboard.press("Escape");
+          await page.waitForSelector(`${editorSelector} .overlay.enabled`);
+          await waitForSerialized(page, 1);
+
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
+          await waitForSerialized(page, 0);
+
+          await page.waitForFunction(() => {
+            const messageElement = document.querySelector(
+              "#editorUndoBarMessage"
+            );
+            return messageElement && messageElement.textContent.trim() !== "";
+          });
+          const message = await page.waitForSelector("#editorUndoBarMessage");
+          const messageText = await page.evaluate(
+            el => el.textContent,
+            message
+          );
+          expect(messageText).toContain("Text removed");
+        })
+      );
+    });
+
+    it("must check that the popup disappears when a new textbox is created", async () => {
+      await Promise.all(
+        pages.map(async ([browserName, page]) => {
+          await switchToFreeText(page);
+
+          let rect = await getRect(page, ".annotationEditorLayer");
+          const data = "Hello PDF.js World !!";
+          await page.mouse.click(rect.x + 100, rect.y + 100);
+          await page.waitForSelector(editorSelector, {
+            visible: true,
+          });
+          await page.type(`${editorSelector} .internal`, data);
+
+          await page.keyboard.press("Escape");
+          await page.waitForSelector(`${editorSelector} .overlay.enabled`);
+          await waitForSerialized(page, 1);
+
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
+          await waitForSerialized(page, 0);
+
+          await page.waitForSelector("#editorUndoBar:not([hidden])");
+          rect = await getRect(page, ".annotationEditorLayer");
+          const newData = "This is a new text box!";
+          await page.mouse.click(rect.x + 150, rect.y + 150);
+          await page.waitForSelector(getEditorSelector(1), {
+            visible: true,
+          });
+          await page.type(`${getEditorSelector(1)} .internal`, newData);
+
+          await page.keyboard.press("Escape");
+          await page.waitForSelector(
+            `${getEditorSelector(1)} .overlay.enabled`
+          );
+          await waitForSerialized(page, 1);
+          await page.waitForSelector("#editorUndoBar", { hidden: true });
         })
       );
     });

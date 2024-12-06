@@ -35,6 +35,7 @@ import {
   PermissionFlag,
   PixelsPerInch,
   shadow,
+  stopEvent,
   version,
 } from "pdfjs-lib";
 import {
@@ -213,6 +214,8 @@ class PDFViewer {
 
   #containerTopLeft = null;
 
+  #editorUndoBar = null;
+
   #enableHWA = false;
 
   #enableHighlightFloatingButton = false;
@@ -280,6 +283,7 @@ class PDFViewer {
     this.downloadManager = options.downloadManager || null;
     this.findController = options.findController || null;
     this.#altTextManager = options.altTextManager || null;
+    this.#editorUndoBar = options.editorUndoBar || null;
 
     if (this.findController) {
       this.findController.onIsPageVisible = pageNumber =>
@@ -748,8 +752,7 @@ class PDFViewer {
         this.#getAllTextInProgress ||
         textLayerMode === TextLayerMode.ENABLE_PERMISSIONS
       ) {
-        event.preventDefault();
-        event.stopPropagation();
+        stopEvent(event);
         return;
       }
       this.#getAllTextInProgress = true;
@@ -786,8 +789,7 @@ class PDFViewer {
           classList.remove("copyAll");
         });
 
-      event.preventDefault();
-      event.stopPropagation();
+      stopEvent(event);
     }
   }
 
@@ -908,7 +910,8 @@ class PDFViewer {
               this.#enableHighlightFloatingButton,
               this.#enableUpdatedAddImage,
               this.#enableNewAltTextWhenAddingImage,
-              this.#mlManager
+              this.#mlManager,
+              this.#editorUndoBar
             );
             eventBus.dispatch("annotationeditoruimanager", {
               source: this,

@@ -327,9 +327,18 @@ async function waitForStorageEntries(page, nEntries) {
 
 async function waitForSerialized(page, nEntries) {
   return page.waitForFunction(
-    n =>
-      (window.PDFViewerApplication.pdfDocument.annotationStorage.serializable
-        .map?.size ?? 0) === n,
+    n => {
+      try {
+        return (
+          (window.PDFViewerApplication.pdfDocument.annotationStorage
+            .serializable.map?.size ?? 0) === n
+        );
+      } catch {
+        // When serializing a stamp annotation with a SVG, the transfer
+        // can fail because of the SVG, so we just retry.
+        return false;
+      }
+    },
     {},
     nEntries
   );
@@ -767,6 +776,12 @@ async function kbFocusPrevious(page) {
   await awaitPromise(handle);
 }
 
+async function kbSave(page) {
+  await page.keyboard.down(modifier);
+  await page.keyboard.press("s");
+  await page.keyboard.up(modifier);
+}
+
 async function switchToEditor(name, page, disable = false) {
   const modeChangedHandle = await createPromise(page, resolve => {
     window.PDFViewerApplication.eventBus.on(
@@ -782,6 +797,36 @@ async function switchToEditor(name, page, disable = false) {
       (disable ? `:not(.${name}Editing)` : `.${name}Editing`)
   );
   await awaitPromise(modeChangedHandle);
+}
+
+function waitForNoElement(page, selector) {
+  return page.waitForFunction(
+    sel => !document.querySelector(sel),
+    {},
+    selector
+  );
+}
+
+function isCanvasWhite(page, pageNumber, rectangle) {
+  return page.evaluate(
+    (rect, pageN) => {
+      const canvas = document.querySelector(
+        `.page[data-page-number = "${pageN}"] .canvasWrapper canvas`
+      );
+      const canvasRect = canvas.getBoundingClientRect();
+      const ctx = canvas.getContext("2d");
+      rect ||= canvasRect;
+      const { data } = ctx.getImageData(
+        rect.x - canvasRect.x,
+        rect.y - canvasRect.y,
+        rect.width,
+        rect.height
+      );
+      return new Uint32Array(data.buffer).every(x => x === 0xffffffff);
+    },
+    rectangle,
+    pageNumber
+  );
 }
 
 export {
@@ -810,6 +855,7 @@ export {
   getSerializedFromSerialized,
   getSpanRectFromText,
   hover,
+  isCanvasWhite,
   isVisible,
   kbBigMoveDown,
   kbBigMoveLeft,
@@ -823,6 +869,7 @@ export {
   kbModifierDown,
   kbModifierUp,
   kbRedo,
+  kbSave,
   kbSelectAll,
   kbUndo,
   loadAndWait,
@@ -838,6 +885,7 @@ export {
   waitForAnnotationModeChanged,
   waitForEntryInStorage,
   waitForEvent,
+  waitForNoElement,
   waitForPageRendered,
   waitForSandboxTrip,
   waitForSelectedEditor,
