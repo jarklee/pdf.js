@@ -174,7 +174,7 @@ class AnnotationEditorLayer {
         break;
       default:
         if (annotationEditorTextSelectable(mode)) {
-          this.enableTextSelection();
+          this.enableTextSelection(mode);
           this.togglePointerEvents(false);
           this.disableClick();
         } else {
@@ -354,7 +354,7 @@ class AnnotationEditorLayer {
     this.#uiManager.setActiveEditor(editor);
   }
 
-  enableTextSelection() {
+  enableTextSelection(newMode = null) {
     this.div.tabIndex = -1;
     if (this.#textLayer?.div && !this.#textSelectionAC) {
       this.#textSelectionAC = new AbortController();
@@ -367,6 +367,13 @@ class AnnotationEditorLayer {
       );
       this.#textLayer.div.classList.add("highlighting");
     }
+    if (this.#textLayer?.div) {
+      if (this.#isNoFreeHighlight(newMode)) {
+        this.#textLayer.div.classList.add("noFree");
+      } else {
+        this.#textLayer.div.classList.remove("noFree");
+      }
+    }
   }
 
   disableTextSelection() {
@@ -376,7 +383,15 @@ class AnnotationEditorLayer {
       this.#textSelectionAC = null;
 
       this.#textLayer.div.classList.remove("highlighting");
+      this.#textLayer.div.classList.remove("noFree");
     }
+  }
+
+  #isNoFreeHighlight(mode = null) {
+    if (!mode) {
+      mode = this.#uiManager.getMode();
+    }
+    return mode === AnnotationEditorType.CUSTOM;
   }
 
   #textLayerPointerDown(event) {
@@ -400,6 +415,11 @@ class AnnotationEditorLayer {
         true,
         /* updateButton = */ true
       );
+      const canFreeHighlighting = !this.#isNoFreeHighlight();
+      if (!canFreeHighlighting) {
+        event.preventDefault();
+        return;
+      }
       this.#textLayer.div.classList.add("free");
       this.toggleDrawing();
       HighlightEditor.startHighlighting(

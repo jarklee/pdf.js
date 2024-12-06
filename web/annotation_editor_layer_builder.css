@@ -81,6 +81,18 @@
     &.free span {
       cursor: var(--editorFreeHighlight-editing-cursor);
     }
+
+    &.noFree {
+      cursor: var(--editorFreeText-editing-cursor);
+
+      span {
+        cursor: var(--editorFreeText-editing-cursor);
+
+        &[role="img"] {
+          cursor: pointer;
+        }
+      }
+    }
   }
 }
 
