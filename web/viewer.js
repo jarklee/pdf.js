@@ -16,6 +16,7 @@
 import {
   AnnotationEditorParamsType,
   AnnotationEditorType,
+  ColorManager,
   PDFViewerApplication,
   SharedToolbarRenderRegistry,
 } from "./app.js";
@@ -41,6 +42,7 @@ window.PDFViewerApplicationOptions = AppOptions;
 window.PDFViewerSharedToolbarRenderRegistry = SharedToolbarRenderRegistry;
 window.PDFViewerAnnotationEditorType = AnnotationEditorType;
 window.PDFViewerAnnotationEditorParamsType = AnnotationEditorParamsType;
+window.PDFViewerColorManager = ColorManager;
 
 function getViewerConfiguration() {
   return {

@@ -45,6 +45,7 @@ import {
   AnnotationEditorParamsType,
   AnnotationEditorType,
   build,
+  ColorManager,
   FeatureTest,
   getDocument,
   getFilenameFromUrl,
@@ -3115,6 +3116,7 @@ function beforeUnload(evt) {
 export {
   AnnotationEditorParamsType,
   AnnotationEditorType,
+  ColorManager,
   PDFViewerApplication,
   SharedToolbarRenderRegistry,
 };

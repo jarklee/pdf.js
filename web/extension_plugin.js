@@ -24,12 +24,15 @@ $(function () {
     PDFViewerApplication.eventBus.on(
       "annotation_custom_menu",
       function ({ shown, data, wrapperId }) {
+        const nodeId = data.uiNodeId;
+        const nodeEl = document.querySelector(`#${nodeId}`);
         window.parent.postMessage(
           {
             action: "annotationCustomMenu",
             shown,
             data,
             wrapperId,
+            highlightedCoords: nodeEl?.getClientRects()?.[0],
           },
           "*"
         );
@@ -49,7 +52,9 @@ $(function () {
       }
     );
 
+    /*
     // Register render for custom button when edit menu open
+    // Sample code, remove if need
     PDFViewerSharedToolbarRenderRegistry.instance.register(
       `editor_menu_${PDFViewerAnnotationEditorType.CUSTOM}`,
       function renderCustomAnnotationMenu({ close, editor, uiManager, data }) {
@@ -64,9 +69,15 @@ $(function () {
         return buttons;
       }
     );
+    */
   }
 
-  function getEditorsByPredicate({ type, ids, externalIds }) {
+  function getEditorsByPredicate({
+    type,
+    ids,
+    externalIds,
+    withOutExternalId,
+  }) {
     const storage =
       PDFViewerApplication.pdfViewer._layerProperties.annotationStorage;
     let editors = Object.values(storage.getAll());
@@ -75,18 +86,43 @@ $(function () {
         return e.editorType === type;
       });
     }
-    if (ids) {
+    if (ids && ids.length > 0) {
       editors = editors.filter(function (e) {
         return ids.includes(e.id);
       });
     }
-    if (externalIds) {
+    if (externalIds && externalIds.length > 0) {
       editors = editors.filter(function (e) {
         return externalIds.includes(e.externalId);
       });
     }
+    if (withOutExternalId) {
+      editors = editors.filter(function (e) {
+        return !e.externalId;
+      });
+    }
     return editors;
   }
+
+  const normalizeColor = (function () {
+    const colorManager = new PDFViewerColorManager();
+    const hexNumbers = Array.from(Array(256).keys(), n =>
+      n.toString(16).padStart(2, "0")
+    );
+    return function (color, forSerialized) {
+      if (forSerialized) {
+        if (Array.isArray(color)) {
+          return color;
+        }
+        return colorManager.convert(color);
+      }
+      if (Array.isArray(color)) {
+        const [r, g, b] = color;
+        return `#${hexNumbers[r]}${hexNumbers[g]}${hexNumbers[b]}`;
+      }
+      return color;
+    };
+  })();
 
   const addAnnotationQueue = (function () {
     const addQueue = {};
@@ -159,7 +195,7 @@ $(function () {
           methodOfCreation: "",
           boxes: uiBoxes,
           text,
-          color,
+          color: normalizeColor(color, false),
           customData,
           externalId,
         },
@@ -167,28 +203,122 @@ $(function () {
       );
     }
 
+    function makeFilter({ type, ids, externalIds, withOutExternalId }) {
+      function filterByType(e) {
+        if (!e.fromSerialized) {
+          // only serialized has type, other hardcoded as custom type
+          return type === PDFViewerAnnotationEditorType.CUSTOM;
+        }
+        return e.annotationType === type;
+      }
+
+      function filterById(e) {
+        if (!e.fromSerialized) {
+          return false;
+        }
+        return ids.includes(e.uiNodeId);
+      }
+
+      function filterByExternalIds(e) {
+        return externalIds.includes(e.externalId);
+      }
+
+      return function (e) {
+        let matched = 0;
+        if (type) {
+          if (!filterByType(e)) {
+            return false;
+          }
+          matched++;
+        }
+        if (ids && ids.length > 0) {
+          if (!filterById(e)) {
+            return false;
+          }
+          matched++;
+        }
+        if (externalIds && externalIds.length > 0) {
+          if (!filterByExternalIds(e)) {
+            return false;
+          }
+          matched++;
+        }
+        if (withOutExternalId) {
+          matched += !e.externalId ? 1 : 0;
+        }
+        return matched > 0;
+      };
+    }
+
+    function removePending(predicate) {
+      const filter = makeFilter(predicate);
+      Object.keys(addQueue).forEach(function (pageIndex) {
+        addQueue[pageIndex] = addQueue[pageIndex].filter(function (e) {
+          return !filter(e);
+        });
+      });
+    }
+
+    function updatePending({ predicate, values }) {
+      const filter = makeFilter(predicate);
+
+      function update(e) {
+        const keyMap = {
+          color: "color",
+          data: "customData",
+          externalId: "externalId",
+        };
+        const updateKeys = Object.keys(values);
+        for (const key of updateKeys) {
+          const realKey = keyMap[key];
+          if (!realKey) {
+            continue;
+          }
+          let value = values[key];
+          if (key === "color") {
+            if (!value) {
+              continue;
+            }
+            value = normalizeColor(value, false);
+          }
+          if (!value && key === "color") {
+            // skip update color if no value
+            continue;
+          }
+          e[realKey] = value;
+        }
+        return e;
+      }
+
+      Object.keys(addQueue).forEach(function (pageIndex) {
+        addQueue[pageIndex] = addQueue[pageIndex].map(function (e) {
+          if (!filter(e)) {
+            return e;
+          }
+          return update(e);
+        });
+      });
+    }
+
     return {
       queue,
       drain,
+      removePending,
+      updatePending,
     };
   })();
 
-  const actionsHandlers = {
-    showHighlight(data) {
-      const pageIndex = data.pageIndex;
-      addAnnotationQueue.queue(pageIndex, data);
-      addAnnotationQueue.drain(pageIndex);
-    },
-    removeHighlight(data) {
-      const { predicate } = data;
+  const annotationManager = (function () {
+    function removeHighlight(predicate) {
       for (const editor of getEditorsByPredicate({
         ...predicate,
         type: "custom",
       })) {
         editor.remove();
       }
-    },
-    updateHighlight(data) {
+    }
+
+    function updateHighlight(data) {
       const { predicate, values } = data;
       const keyMap = {
         color: PDFViewerAnnotationEditorParamsType.ANNOTATION_CUSTOM_COLOR,
@@ -204,11 +334,45 @@ $(function () {
       })) {
         for (const key of updateKeys) {
           const realKey = keyMap[key];
-          if (realKey) {
-            editor.updateParams(realKey, values[key]);
+          if (!realKey) {
+            continue;
           }
+          let value = values[key];
+          if (key === "color") {
+            if (!value) {
+              continue;
+            }
+            value = normalizeColor(value, false);
+          }
+          if (!value && key === "color") {
+            // skip update color if no value
+            continue;
+          }
+          editor.updateParams(realKey, value);
         }
       }
+    }
+
+    return {
+      removeHighlight,
+      updateHighlight,
+    };
+  })();
+
+  const actionsHandlers = {
+    showHighlight(data) {
+      const pageIndex = data.pageIndex;
+      addAnnotationQueue.queue(pageIndex, data);
+      addAnnotationQueue.drain(pageIndex);
+    },
+    removeHighlight(data) {
+      const { predicate } = data;
+      annotationManager.removeHighlight(predicate);
+      addAnnotationQueue.removePending(predicate);
+    },
+    updateHighlight(data) {
+      annotationManager.updateHighlight(data);
+      addAnnotationQueue.updatePending(data);
     },
   };
 

@@ -42,6 +42,10 @@ import {
   VerbosityLevel,
 } from "./shared/util.js";
 import {
+  AnnotationEditorUIManager,
+  ColorManager,
+} from "./display/editor/tools.js";
+import {
   build,
   getDocument,
   PDFDataRangeTransport,
@@ -63,7 +67,6 @@ import {
   setLayerDimensions,
 } from "./display/display_utils.js";
 import { AnnotationEditorLayer } from "./display/editor/annotation_editor_layer.js";
-import { AnnotationEditorUIManager } from "./display/editor/tools.js";
 import { AnnotationLayer } from "./display/annotation_layer.js";
 import { ColorPicker } from "./display/editor/color_picker.js";
 import { DOMSVGFactory } from "./display/svg_factory.js";
@@ -96,6 +99,7 @@ export {
   AnnotationLayer,
   AnnotationMode,
   build,
+  ColorManager,
   ColorPicker,
   createValidAbsoluteUrl,
   DOMSVGFactory,
