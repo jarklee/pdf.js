@@ -362,11 +362,14 @@ $(function () {
 
   const scrollManager = (function () {
     let pending;
+    let scrollingToken;
 
     function scrollPending(pageIndex) {
       if (pending?.pageIndex !== pageIndex) {
         return;
       }
+      cancelScrollToEditor();
+
       const editors = getEditorsByPredicate(pending.predicate);
       pending = undefined;
       if (editors.length === 0) {
@@ -376,10 +379,41 @@ $(function () {
         return e.pageIndex === pageIndex;
       });
       const editor = inPageEditor ?? editors[0];
-      editor?.div?.scrollIntoViewIfNeeded();
+      if (!editor) {
+        return;
+      }
+      if (editor.pageIndex !== pageIndex) {
+        actionsHandlers.scrollToPage({ pageIndex: editor.pageIndex });
+        scrollingToken = setTimeout(function () {
+          scrollToEditor(editor, 3);
+        }, 100);
+      } else {
+        scrollToEditor(editor, 3);
+      }
+    }
+
+    function scrollToEditor(editor, retry = 3) {
+      if (editor.div?.isConnected) {
+        editor.div.scrollIntoViewIfNeeded();
+        return;
+      }
+      if (retry > 0) {
+        scrollingToken = setTimeout(function () {
+          scrollToEditor(editor, retry - 1);
+        }, 10);
+      }
+    }
+
+    function cancelScrollToEditor() {
+      if (scrollingToken) {
+        clearTimeout(scrollingToken);
+        scrollingToken = undefined;
+      }
     }
 
     function queueScroll(pageIndex, predicate) {
+      cancelScrollToEditor();
+      actionsHandlers.scrollToPage({ pageIndex });
       pending = { pageIndex, predicate };
       const page = PDFViewerApplication.pdfViewer.getPageView(pageIndex);
       if (!page) {
@@ -416,11 +450,7 @@ $(function () {
       PDFViewerApplication.page = pageIndex + 1;
     },
     scrollToAnnotation({ pageIndex, predicate }) {
-      actionsHandlers.scrollToPage({ pageIndex });
-      setTimeout(function () {
-        // delay to avoid render issue
-        scrollManager.queueScroll(pageIndex, predicate);
-      }, 0);
+      scrollManager.queueScroll(pageIndex, predicate);
     },
   };
 
