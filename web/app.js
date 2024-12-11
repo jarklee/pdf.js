@@ -688,7 +688,7 @@ const PDFViewerApplication = {
       const queryString = document.location.search.substring(1);
       const params = parseQueryString(queryString);
       file = params.get("file") ?? AppOptions.get("defaultUrl");
-      validateFileURL(file);
+      validateFileURL(file, params.get("force"));
     } else if (PDFJSDev.test("MOZCENTRAL")) {
       file = window.location.href;
     } else if (PDFJSDev.test("CHROME")) {
@@ -2226,8 +2226,11 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     "https://mozilla.github.io",
   ];
   // eslint-disable-next-line no-var
-  var validateFileURL = function (file) {
+  var validateFileURL = function (file, force) {
     if (!file) {
+      return;
+    }
+    if (force === "true") {
       return;
     }
     try {
@@ -2237,6 +2240,12 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
         return;
       }
       const fileOrigin = new URL(file, window.location.href).origin;
+      const extendAllowedOrigins =
+        PDFViewerApplication.extendAllowedOrigins ?? [];
+      if (extendAllowedOrigins.includes(fileOrigin)) {
+        return;
+      }
+
       // Removing of the following line will not guarantee that the viewer will
       // start accepting URLs from foreign origin -- CORS headers on the remote
       // server must be properly configured.
@@ -3108,6 +3117,9 @@ function onKeyDown(evt) {
 }
 
 function beforeUnload(evt) {
+  if (PDFViewerApplication.skipUnsavedConfirm) {
+    return false;
+  }
   evt.preventDefault();
   evt.returnValue = "";
   return false;
