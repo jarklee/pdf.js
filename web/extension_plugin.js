@@ -81,7 +81,11 @@ $(function () {
   }) {
     const storage =
       PDFViewerApplication.pdfViewer._layerProperties.annotationStorage;
-    let editors = Object.values(storage.getAll());
+    const all = storage.getAll();
+    if (!all) {
+      return [];
+    }
+    let editors = Object.values(all);
     if (type) {
       editors = editors.filter(function (e) {
         return e.editorType === type;
@@ -429,6 +433,9 @@ $(function () {
   })();
 
   const actionsHandlers = {
+    enableEditor() {
+      document.querySelector("#editorCustomButton").click();
+    },
     showHighlight(data) {
       const pageIndex = data.pageIndex;
       addAnnotationQueue.queue(pageIndex, data);
