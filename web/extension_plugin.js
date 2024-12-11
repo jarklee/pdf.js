@@ -20,6 +20,23 @@ $(function () {
       }, 0);
     });
 
+    PDFViewerApplication.eventBus.on("documentinit", function () {
+      window.parent.postMessage(
+        {
+          action: "onDocumentInit",
+        },
+        "*"
+      );
+    });
+
+    PDFViewerApplication.eventBus.on("documentloaded", function () {
+      window.parent.postMessage(
+        {
+          action: "onDocumentLoad",
+        },
+        "*"
+      );
+    });
     // Process when custom menu hide/shown.
     // Usually will trigger some action on host
     PDFViewerApplication.eventBus.on(

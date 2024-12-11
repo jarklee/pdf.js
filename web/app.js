@@ -701,7 +701,7 @@ const PDFViewerApplication = {
       allowDrop = false;
     }
     PDFViewerApplication.skipUnsavedConfirm =
-      params.get("skipUnsavedConfirm") === "true";
+      params.get("skipunsavedconfirm") === "true";
 
     if (
       (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) &&
