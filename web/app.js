@@ -684,9 +684,10 @@ const PDFViewerApplication = {
 
     const { appConfig, eventBus } = this;
     let file;
+    const queryString = document.location.search.substring(1);
+    const params = parseQueryString(queryString);
+
     if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
-      const queryString = document.location.search.substring(1);
-      const params = parseQueryString(queryString);
       file = params.get("file") ?? AppOptions.get("defaultUrl");
       validateFileURL(file, params.get("force"));
     } else if (PDFJSDev.test("MOZCENTRAL")) {
@@ -695,7 +696,17 @@ const PDFViewerApplication = {
       file = AppOptions.get("defaultUrl");
     }
 
-    if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
+    let allowDrop = true;
+    if (file && params.get("noDrop") === "true") {
+      allowDrop = false;
+    }
+    PDFViewerApplication.skipUnsavedConfirm =
+      params.get("skipUnsavedConfirm") === "true";
+
+    if (
+      (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) &&
+      allowDrop
+    ) {
       const fileInput = (this._openFileInput = document.createElement("input"));
       fileInput.id = "fileInput";
       fileInput.hidden = true;

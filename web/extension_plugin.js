@@ -16,6 +16,7 @@ $(function () {
       const pageIndex = e.pageNumber - 1;
       setTimeout(function () {
         addAnnotationQueue.drain(pageIndex, 3);
+        scrollManager.scrollPending(pageIndex);
       }, 0);
     });
 
@@ -359,20 +360,67 @@ $(function () {
     };
   })();
 
+  const scrollManager = (function () {
+    let pending;
+
+    function scrollPending(pageIndex) {
+      if (pending?.pageIndex !== pageIndex) {
+        return;
+      }
+      const editors = getEditorsByPredicate(pending.predicate);
+      pending = undefined;
+      if (editors.length === 0) {
+        return;
+      }
+      const inPageEditor = editors.find(function (e) {
+        return e.pageIndex === pageIndex;
+      });
+      const editor = inPageEditor ?? editors[0];
+      editor?.div?.scrollIntoViewIfNeeded();
+    }
+
+    function queueScroll(pageIndex, predicate) {
+      pending = { pageIndex, predicate };
+      const page = PDFViewerApplication.pdfViewer.getPageView(pageIndex);
+      if (!page) {
+        return;
+      }
+      scrollPending(pageIndex);
+    }
+
+    return {
+      scrollPending,
+      queueScroll,
+    };
+  })();
+
   const actionsHandlers = {
     showHighlight(data) {
       const pageIndex = data.pageIndex;
       addAnnotationQueue.queue(pageIndex, data);
       addAnnotationQueue.drain(pageIndex);
     },
-    removeHighlight(data) {
-      const { predicate } = data;
+    removeHighlight({ predicate }) {
       annotationManager.removeHighlight(predicate);
       addAnnotationQueue.removePending(predicate);
     },
     updateHighlight(data) {
       annotationManager.updateHighlight(data);
       addAnnotationQueue.updatePending(data);
+    },
+    scrollToPage({ pageIndex }) {
+      pageIndex = Math.round(pageIndex);
+      if (Number.isNaN(pageIndex)) {
+        return;
+      }
+      PDFViewerApplication.page = pageIndex + 1;
+    },
+    scrollToAnnotation({ pageIndex, predicate }) {
+      actionsHandlers.scrollToPage({ pageIndex });
+      setTimeout(function () {
+        // delay to avoid render issue
+        scrollManager.queueScroll(pageIndex, predicate);
+      }, 0);
     },
   };
 
