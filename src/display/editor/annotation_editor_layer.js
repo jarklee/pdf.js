@@ -545,6 +545,7 @@ class AnnotationEditorLayer {
   /**
    * Add a new editor in the current view.
    * @param {AnnotationEditor} editor
+   * @param {boolean} noFocus Prevent automatically focus after add
    */
   add(editor) {
     if (editor.parent === this && editor.isAttachedToDOM) {
@@ -562,7 +563,9 @@ class AnnotationEditorLayer {
 
     // The editor will be correctly moved into the DOM (see fixAndSetPosition).
     editor.fixAndSetPosition();
-    editor.onceAdded();
+    const programmatically = editor.programmatically;
+    delete editor.programmatically;
+    editor.onceAdded(programmatically);
     this.#uiManager.addToAnnotationStorage(editor);
     editor._reportTelemetry(editor.telemetryInitialData);
   }
@@ -737,6 +740,7 @@ class AnnotationEditorLayer {
       this.editorTypeByMode(mode)
     );
     if (editor) {
+      editor.programmatically = data.programmatically;
       this.add(editor);
     }
 

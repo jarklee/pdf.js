@@ -1248,7 +1248,7 @@ class AnnotationEditor {
   /**
    * Executed once this editor has been rendered.
    */
-  onceAdded() {}
+  onceAdded(programmatically = false) {}
 
   /**
    * Check if the editor contains something.

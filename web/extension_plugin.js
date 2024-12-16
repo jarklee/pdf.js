@@ -190,7 +190,9 @@ $(function () {
 
     function addFromSerialized(page, data) {
       const editorLayer = page.annotationEditorLayer.annotationEditorLayer;
+      const showMenuWhenAdded = Boolean(data.showMenuWhenAdded ?? false);
       editorLayer.deserialize(data).then(function (editor) {
+        editor.programmatically = !showMenuWhenAdded;
         editorLayer.add(editor);
       });
     }
@@ -201,6 +203,7 @@ $(function () {
       const {
         rawDims: { pageWidth, pageHeight, pageX, pageY },
       } = page.viewport;
+      const showMenuWhenAdded = Boolean(data.showMenuWhenAdded ?? false);
       const uiBoxes = [];
       for (const box of boxes) {
         uiBoxes.push({
@@ -220,6 +223,7 @@ $(function () {
           color: normalizeColor(color, false),
           customData,
           externalId,
+          programmatically: !showMenuWhenAdded,
         },
         PDFViewerAnnotationEditorType.CUSTOM
       );

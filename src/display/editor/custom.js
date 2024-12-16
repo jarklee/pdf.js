@@ -301,11 +301,13 @@ class AnnotationCustomEditor extends AnnotationEditor {
   }
 
   /** @inheritdoc */
-  onceAdded() {
+  onceAdded(programmatically) {
     if (!this.annotationElementId) {
       this.parent.addUndoableEditor(this);
     }
-    this.div.focus();
+    if (!programmatically) {
+      this.div.focus();
+    }
   }
 
   /** @inheritdoc */
