@@ -403,6 +403,7 @@ $(function () {
       cancelScrollToEditor();
 
       const editors = getEditorsByPredicate(pending.predicate);
+      const autoFocus = pending?.autoFocus;
       pending = undefined;
       if (editors.length === 0) {
         return;
@@ -417,10 +418,10 @@ $(function () {
       if (editor.pageIndex !== pageIndex) {
         actionsHandlers.scrollToPage({ pageIndex: editor.pageIndex });
         scrollingToken = setTimeout(function () {
-          scrollToEditor(editor, pending.autoFocus, 3);
+          scrollToEditor(editor, autoFocus, 3);
         }, 100);
       } else {
-        scrollToEditor(editor, pending.autoFocus, 3);
+        scrollToEditor(editor, autoFocus, 3);
       }
     }
 
