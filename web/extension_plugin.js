@@ -126,6 +126,13 @@ $(function () {
     return editors;
   }
 
+  function triggerEditorSelected(editor) {
+    const page = PDFViewerApplication.pdfViewer.getPageView(editor.pageIndex);
+    if (page) {
+      page.annotationEditorLayer.annotationEditorLayer.setSelected(editor);
+    }
+  }
+
   const normalizeColor = (function () {
     const colorManager = new PDFViewerColorManager();
     const hexNumbers = Array.from(Array(256).keys(), n =>
@@ -410,21 +417,24 @@ $(function () {
       if (editor.pageIndex !== pageIndex) {
         actionsHandlers.scrollToPage({ pageIndex: editor.pageIndex });
         scrollingToken = setTimeout(function () {
-          scrollToEditor(editor, 3);
+          scrollToEditor(editor, pending.autoFocus, 3);
         }, 100);
       } else {
-        scrollToEditor(editor, 3);
+        scrollToEditor(editor, pending.autoFocus, 3);
       }
     }
 
-    function scrollToEditor(editor, retry = 3) {
+    function scrollToEditor(editor, autoFocus = false, retry = 3) {
       if (editor.div?.isConnected) {
         editor.div.scrollIntoViewIfNeeded();
+        if (autoFocus) {
+          triggerEditorSelected(editor);
+        }
         return;
       }
       if (retry > 0) {
         scrollingToken = setTimeout(function () {
-          scrollToEditor(editor, retry - 1);
+          scrollToEditor(editor, autoFocus, retry - 1);
         }, 10);
       }
     }
@@ -436,10 +446,10 @@ $(function () {
       }
     }
 
-    function queueScroll(pageIndex, predicate) {
+    function queueScroll(pageIndex, predicate, autoFocus) {
       cancelScrollToEditor();
       actionsHandlers.scrollToPage({ pageIndex });
-      pending = { pageIndex, predicate };
+      pending = { pageIndex, predicate, autoFocus };
       const page = PDFViewerApplication.pdfViewer.getPageView(pageIndex);
       if (!page) {
         return;
@@ -466,8 +476,7 @@ $(function () {
         return;
       }
       const editor = editors[0];
-      const page = PDFViewerApplication.pdfViewer.getPageView(editor.pageIndex);
-      page.annotationEditorLayer.annotationEditorLayer.setSelected(editor);
+      triggerEditorSelected(editor);
     },
     showHighlight(data) {
       const pageIndex = data.pageIndex;
@@ -489,8 +498,8 @@ $(function () {
       }
       PDFViewerApplication.page = pageIndex + 1;
     },
-    scrollToAnnotation({ pageIndex, predicate }) {
-      scrollManager.queueScroll(pageIndex, predicate);
+    scrollToAnnotation({ pageIndex, predicate, autoFocus }) {
+      scrollManager.queueScroll(pageIndex, predicate, autoFocus);
     },
   };
 
