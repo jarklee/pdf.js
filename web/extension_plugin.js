@@ -457,6 +457,18 @@ $(function () {
     enableEditor() {
       document.querySelector("#editorCustomButton").click();
     },
+    dismissSelected() {
+      PDFViewerApplication.pdfViewer._layerProperties.annotationEditorUIManager.unselectAll();
+    },
+    showSelected({ predicate }) {
+      const editors = getEditorsByPredicate(predicate);
+      if (editors.length === 0) {
+        return;
+      }
+      const editor = editors[0];
+      const page = PDFViewerApplication.pdfViewer.getPageView(editor.pageIndex);
+      page.annotationEditorLayer.annotationEditorLayer.setSelected(editor);
+    },
     showHighlight(data) {
       const pageIndex = data.pageIndex;
       addAnnotationQueue.queue(pageIndex, data);
