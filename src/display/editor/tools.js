@@ -2404,13 +2404,17 @@ class AnnotationEditorUIManager {
       return null;
     }
     const selection = document.getSelection();
-    for (let i = 0, ii = selection.rangeCount; i < ii; i++) {
-      if (
-        !textLayer.contains(selection.getRangeAt(i).commonAncestorContainer)
-      ) {
-        return null;
+
+    const isHighlightOutside = (() => {
+      for (let i = 0, ii = selection.rangeCount; i < ii; i++) {
+        if (
+          !textLayer.contains(selection.getRangeAt(i).commonAncestorContainer)
+        ) {
+          return true;
+        }
       }
-    }
+      return false;
+    })();
 
     const {
       x: layerX,
@@ -2458,16 +2462,39 @@ class AnnotationEditorUIManager {
     }
 
     const boxes = [];
-    for (let i = 0, ii = selection.rangeCount; i < ii; i++) {
-      const range = selection.getRangeAt(i);
+    if (isHighlightOutside) {
+      // Workaround for chrome based browsers bug
+      // when highlight the very last line of PDF.
+      const range = selection.getRangeAt(0);
       if (range.collapsed) {
-        continue;
+        return null;
+      }
+      const container = range.commonAncestorContainer;
+      if (
+        container.nodeType !== Node.ELEMENT_NODE ||
+        !container.classList.contains("page") ||
+        !container.contains(textLayer)
+      ) {
+        return null;
       }
       for (const { x, y, width, height } of range.getClientRects()) {
         if (width === 0 || height === 0) {
           continue;
         }
         boxes.push(rotator(x, y, width, height));
+      }
+    } else {
+      for (let i = 0, ii = selection.rangeCount; i < ii; i++) {
+        const range = selection.getRangeAt(i);
+        if (range.collapsed) {
+          continue;
+        }
+        for (const { x, y, width, height } of range.getClientRects()) {
+          if (width === 0 || height === 0) {
+            continue;
+          }
+          boxes.push(rotator(x, y, width, height));
+        }
       }
     }
     return boxes.length === 0 ? null : boxes;
