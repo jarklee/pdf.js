@@ -273,6 +273,9 @@ class TextLayer {
     const textDivs = this.#textDivs,
       textContentItemsStr = this.#textContentItemsStr;
 
+    const isFirefox = this.#isFirefox();
+    console.log("isFirefox", isFirefox);
+
     for (const item of items) {
       // No point in rendering many divs as it would make the browser
       // unusable even after the divs are rendered.
@@ -284,6 +287,9 @@ class TextLayer {
       }
 
       if (item.str === undefined) {
+        if (!isFirefox) {
+          continue;
+        }
         if (
           item.type === "beginMarkedContentProps" ||
           item.type === "beginMarkedContent"
@@ -445,6 +451,16 @@ class TextLayer {
     if (transform.length > 0) {
       style.transform = transform;
     }
+  }
+
+  #isFirefox() {
+    if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
+      return true;
+    }
+    if (typeof PDFJSDev === "undefined" || !PDFJSDev.test("CHROME")) {
+      return navigator.userAgent.toLowerCase().includes("firefox");
+    }
+    return false;
   }
 
   /**
