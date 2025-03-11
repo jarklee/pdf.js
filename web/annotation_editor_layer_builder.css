@@ -82,10 +82,13 @@
   }
 
   &.noFree {
-    cursor: var(--editorFreeText-editing-cursor);
+    /* cursor: var(--editorFreeText-editing-cursor); */
+    cursor: default;
 
     span {
       cursor: var(--editorFreeText-editing-cursor);
+      padding: 2px 2px;
+      margin: -2px -2px;
 
       &[role="img"] {
         cursor: pointer;
