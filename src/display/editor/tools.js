@@ -1427,7 +1427,6 @@ class AnnotationEditorUIManager {
    * @param {ClipboardEvent} event
    */
   async paste(event) {
-    event.preventDefault();
     const { clipboardData } = event;
     for (const item of clipboardData.items) {
       for (const editorType of this.#editorTypes) {
@@ -1437,6 +1436,11 @@ class AnnotationEditorUIManager {
         }
       }
     }
+    if (this.#mode === AnnotationEditorType.CUSTOM) {
+      // skip pasting in custom mode, possible pasting in the search box
+      return;
+    }
+    event.preventDefault();
 
     let data = clipboardData.getData("application/pdfjs");
     if (!data) {
