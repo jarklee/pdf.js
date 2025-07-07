@@ -206,7 +206,7 @@ $(function () {
 
     function addFromBoxes(page, data) {
       const editorLayer = page.annotationEditorLayer.annotationEditorLayer;
-      const { boxes, text, color, customData, externalId, usePageTranslation } =
+      const { boxes, text, color, customData, externalId, hasPageTranslation } =
         data;
       const {
         rawDims: { pageWidth, pageHeight, pageX, pageY },
@@ -216,7 +216,7 @@ $(function () {
 
       let pageXOffset = 0;
       let pageYOffset = 0;
-      if (usePageTranslation) {
+      if (hasPageTranslation) {
         // if mustPageTranslation is true,
         // the boxes are generated from external tool
         // which does not care about page translation
@@ -226,8 +226,8 @@ $(function () {
       }
       for (const box of boxes) {
         uiBoxes.push({
-          x: (box.x - pageX + pageXOffset) / pageWidth,
-          y: (box.y - pageY + pageYOffset) / pageHeight,
+          x: (box.x - pageXOffset) / pageWidth,
+          y: (box.y - pageYOffset) / pageHeight,
           width: box.width / pageWidth,
           height: box.height / pageHeight,
         });

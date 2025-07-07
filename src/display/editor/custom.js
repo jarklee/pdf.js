@@ -124,12 +124,11 @@ class AnnotationCustomEditor extends AnnotationEditor {
     const pageBoxes = [];
     const layerBoxes = [];
     const [pageWidth, pageHeight] = this.pageDimensions;
-    const [pageX, pageY] = this.pageTranslation;
     const [width, height] = this.parentDimensions;
     for (const box of boxes) {
       pageBoxes.push({
-        x: box.x * pageWidth + pageX,
-        y: box.y * pageHeight + pageY,
+        x: box.x * pageWidth,
+        y: box.y * pageHeight,
         width: box.width * pageWidth,
         height: box.height * pageHeight,
       });
@@ -143,10 +142,6 @@ class AnnotationCustomEditor extends AnnotationEditor {
     return {
       page: pageBoxes,
       layer: layerBoxes,
-      pageWidth,
-      pageHeight,
-      pageX,
-      pageY,
     };
   }
 
