@@ -133,6 +133,18 @@ $(function () {
     }
   }
 
+  function getPageTranslation(pageIndex) {
+    const page = PDFViewerApplication.pdfViewer.getPageView(pageIndex);
+    if (!page) {
+      return { pageX: 0, pageY: 0 };
+    }
+    const { rawDims } = page.viewport;
+    return {
+      pageX: rawDims.pageX,
+      pageY: rawDims.pageY,
+    };
+  }
+
   const normalizeColor = (function () {
     const colorManager = new PDFViewerColorManager();
     const hexNumbers = Array.from(Array(256).keys(), n =>
@@ -513,6 +525,26 @@ $(function () {
     },
     scrollToAnnotation({ pageIndex, predicate, autoFocus }) {
       scrollManager.queueScroll(pageIndex, predicate, autoFocus);
+    },
+    requestPageTranslation({ pageIndex, pageIndexes }) {
+      const pages = [];
+      if (typeof pageIndex === "number") {
+        pages.push(pageIndex);
+      }
+      if (Array.isArray(pageIndexes)) {
+        pages.push(...pageIndexes);
+      }
+      const translations = {};
+      for (const index of pages) {
+        translations[index] = getPageTranslation(index);
+      }
+      window.parent.postMessage(
+        {
+          action: "onPageTranslationChanged",
+          translations,
+        },
+        "*"
+      );
     },
   };
 
