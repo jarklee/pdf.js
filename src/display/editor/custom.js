@@ -143,6 +143,10 @@ class AnnotationCustomEditor extends AnnotationEditor {
     return {
       page: pageBoxes,
       layer: layerBoxes,
+      pageWidth,
+      pageHeight,
+      pageX,
+      pageY,
     };
   }
 
